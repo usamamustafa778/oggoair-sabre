@@ -4,63 +4,53 @@ import Container from "./common/Container";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { CaretDown } from "phosphor-react";
-import { Check, Facebook, Instagram, Linkedin } from "lucide-react";
+import { Check, FacebookIcon, InstagramIcon, LinkedinIcon } from "lucide-react";
 import Link from "next/link";
 
 export default function Footer() {
   const [langOpen, setLangOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("US");
+  const [selectedLanguage, setSelectedLanguage] = useState("GH");
   const langRef = useRef(null);
 
   const flag = [
-    {
-      countryCode: "US",
-      name: "English (US)",
-      flag: "/st-images/flags/usa.webp",
-    },
-    // {
-    //   countryCode: "SA",
-    //   name: "Jordan",
-    //   flag: "/st-images/flags/jordan.webp",
-    // },
-    // {
-    //   countryCode: "DE",
-    //   name: "Germany",
-    //   flag: "/st-images/flags/germany.png",
-    // },
-    // {
-    //   countryCode: "RO",
-    //   name: "Romania",
-    //   flag: "/st-images/flags/romania.png",
-    // },
-    {
-      countryCode: "TR",
-      name: "Turkey",
-      flag: "/st-images/flags/turkey.png",
-    },
-    {
-      countryCode: "RU",
-      name: "Russia",
-      flag: "/st-images/flags/russia.png",
-    },
     {
       countryCode: "GH",
       name: "Ghana",
       flag: "/st-images/flags/ghana.png",
     },
     {
-      countryCode: "KE",
-      name: "Kenya",
-      flag: "/st-images/flags/kenya.png",
+      countryCode: "RO",
+      name: "Romania",
+      flag: "/st-images/flags/romania-rounded.png",
     },
     {
       countryCode: "RW",
       name: "Rwanda",
-      flag: "/st-images/flags/rwanda.png",
+      flag: "/st-images/flags/rwanda-rounded.png",
     },
   ];
 
-  // Get the selected flag data
+  const BRANCH_ADDRESSES = {
+    GH: {
+      line1: "Oggotrip Ghana",
+      line2: "K. oppong close, House No.1 Comm. 25 Annex- Tema Ghana",
+      website: "https://www.oggotrip.travel",
+      email: "support@oggotrip.travel",
+    },
+    RO: {
+      line1: "Oggotrip Romania",
+      line2: "Bucureşti Sectorul 2, Calea MOŞILOR, Nr. 195, Bloc 1bis, Etaj 5, Apartament unit. 17",
+      website: "https://www.oggotrip.com",
+      email: "support@oggotrip.com",
+    },
+    RW: {
+      line1: "Oggotrip Rwanda",
+      line2: "KK 15 Rd 36, Kicukiro – Kigali",
+      website: "https://www.oggotrip.africa",
+      email: "support@oggotrip.africa",
+    },
+  };
+
   const selectedFlagData = flag.find(
     (item) => item.countryCode === selectedLanguage
   );
@@ -76,7 +66,6 @@ export default function Footer() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Close language dropdown if click is outside
       if (langRef.current && !langRef.current.contains(event.target)) {
         setLangOpen(false);
       }
@@ -88,135 +77,125 @@ export default function Footer() {
 
   return (
     <>
-      <FullContainer className="bg-primary-bg px-4 pt-8">
-        <Container className="w-full grid grid-cols-1 md:grid-cols-2 items-center justify-center h-full pt-10 overflow-hidden">
-          {/* Left: Mobile image */}
-          <div className="flex-shrink-0 flex items-center justify-center pr-[20px] sm:pr-[40px] md:pr-[60px] pt-[30px] sm:pt-[40px] md:pt-[50px] h-full w-[95%]">
-            <Image
-              src="/st-images/footer.png"
-              alt="Oggoair app on mobile"
-              width={1000}
-              height={1000}
-              className="w-full h-auto rounded-xl lg:translate-y-11 -translate-x-1 sm:-translate-x-2"
-            />
-          </div>
-          {/* Right: App info */}
-          <div className="flex flex-col justify-between gap-4 h-full w-full translate-x-[-5px] sm:translate-x-[-10px] md:translate-x-[-15px] pb-4">
-            <div className="flex flex-col gap-3">
-              <div className="bg-primary-green text-primary-text font-semibold rounded-full px-4 sm:px-6 py-3 sm:py-4 mb-2 inline-block text-xl sm:text-2xl md:text-[28px] w-fit">
-                Our free app
+      <FullContainer className="pt-10 md:pt-20">
+        <div className="border-t w-full bg-[#FBFCFE] border-gray-200">
+          <Container className="">
+            <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-12 lg:gap-20">
+              {/* Left: Mobile app illustration */}
+              <div className="flex justify-center lg:justify-start order-1">
+                <div className="relative w-full bg-white flex items-center justify-center py-8">
+                  <Image
+                    src="/img/mobile-app-qr.png"
+                    alt="Oggoair mobile app"
+                    width={500}
+                    height={500}
+                    className="w-full max-w-[520px] h-auto object-contain"
+                  />
+                </div>
               </div>
-              <div className="text-primary-text text-base sm:text-lg md:text-xl mb-8 sm:mb-10 md:mb-12 leading-6 sm:leading-7 md:leading-7.5">
-                Unlock a world of travel possibilities with the Oggoair app -
-                the best travel app for your mobile device.
+
+              {/* Right: App promotion */}
+              <div className="flex flex-col justify-center order-2 text-center lg:text-left">
+                <h2
+                  className="text-2xl md:text-3xl lg:text-2xl font-bold mb-6 leading-tight"
+                  style={{ color: "#132968" }}
+                >
+                  Get more out of oggotrip with our mobile app
+                </h2>
+
+                {/* Features - 2x2 bullet grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 mb-9">
+                  {[
+                    "Download boarding passes",
+                    "One click bookings",
+                    "Get exclusive offers and prices",
+                    "Trip notifications",
+                  ].map((feature, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="flex-shrink-0 w-11 h-11 md:w-12 md:h-12 rounded-full bg-[#F1FFB8] flex items-center justify-center">
+                        <span className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#132968] flex items-center justify-center">
+                          <Check
+                            size={18}
+                            style={{ color: "#D4FF5A" }}
+                            strokeWidth={3}
+                          />
+                        </span>
+                      </span>
+                      <span
+                        className="font-medium text-base md:text-lg"
+                        style={{ color: "#132968" }}
+                      >
+                        {feature}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* App store buttons */}
+                <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
+                  <a href="#" className="block">
+                    <Image
+                      src="/st-images/footer1.webp"
+                      alt="Download on the App Store"
+                      width={160}
+                      height={52}
+                      className="h-12 w-auto object-contain hover:opacity-90 transition-opacity"
+                    />
+                  </a>
+                  <a href="#" className="block">
+                    <Image
+                      src="/st-images/footer2.png"
+                      alt="GET IT ON Google Play"
+                      width={160}
+                      height={52}
+                      className="h-12 w-auto object-contain hover:opacity-90 transition-opacity"
+                    />
+                  </a>
+                </div>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-wrap gap-4 sm:gap-6 md:gap-8 mb-2">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <span className="inline-flex items-center justify-center h-fit p-2 sm:p-3 rounded-full bg-secondary-green">
-                  <Image
-                    src="/st-images/footericon.png"
-                    width={300}
-                    height={300}
-                    alt="Mobile Tickets"
-                    className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14"
-                  />
-                </span>
-                <span className="font-bold text-primary-text text-lg sm:text-xl md:text-2xl pl-1 sm:pl-2">
-                  Mobile Tickets
-                </span>
-              </div>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <span className="inline-flex items-center justify-center p-2 sm:p-3 h-fit rounded-full bg-secondary-green">
-                  <Image
-                    src="/st-images/footericon.png"
-                    width={300}
-                    height={300}
-                    className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14"
-                  />
-                </span>
-                <span className="font-bold text-primary-text text-lg sm:text-xl md:text-2xl">
-                  Mobile Tickets
-                </span>
-              </div>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <span className="inline-flex items-center justify-center w-fit p-2 sm:p-3 rounded-full bg-secondary-green">
-                  <Image
-                    src="/st-images/footericon.png"
-                    width={300}
-                    height={300}
-                    className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14"
-                  />
-                </span>
-                <span className="font-bold text-primary-text text-lg sm:text-xl md:text-2xl">
-                  Live journey updates
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3 mt-4">
-              <Image
-                src="/st-images/footer1.webp"
-                alt="App Store"
-                className="w-full h-auto"
-                width={1000}
-                height={1000}
-              />
-              <Image
-                src="/st-images/footer2.png"
-                alt="Google Play"
-                className="w-full h-auto"
-                width={1000}
-                height={1000}
-              />
-              <Image
-                src="/st-images/footer3.png"
-                alt="App Gallery"
-                className="w-full h-auto"
-                width={1000}
-                height={1000}
-              />
-            </div>
-          </div>
-        </Container>
+          </Container>
+        </div>
       </FullContainer>
 
-      <FullContainer className="py-14">
+      {/* Newsletter / subscribe banner */}
+      <FullContainer className="bg-[#132968] py-10">
         <Container>
-          <div className="space-y-6 ">
-            <h2 className="text-primary-text text-lg sm:text-xl lg:text-2xl font-medium leading-7 sm:leading-8 lg:leading-9">
-              We know how to save on vacations
-              <br />
-              and find discounts, and we'll show you how.
-            </h2>
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+            <div className="max-w-xl">
+              <h2 className="text-white text-lg sm:text-xl lg:text-2xl font-medium leading-7 sm:leading-8 lg:leading-9">
+                We know how to save on vacations
+                <br />
+                and find discounts, and we'll show you how.
+              </h2>
+            </div>
 
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row gap-3 max-w-[485px] border-3 border-white bg-primary-green/30 sm:rounded-full rounded-3xl">
+            <div className="w-full max-w-xl space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3 bg-[#F1FFB8] rounded-full px-4 py-2">
                 <input
                   type="email"
                   placeholder="Where to send letters?"
-                  className="flex-1 px-4 sm:px-6 py-3 sm:py-4 rounded-full focus:outline-none focus:border-primary-green text-primary-text bg-transparent text-sm sm:text-base placeholder:text-primary-text/70"
+                  className="flex-1 bg-transparent px-2 sm:px-4 py-2.5 sm:py-3 rounded-full focus:outline-none text-[#132968] text-xs sm:text-sm placeholder:text-[#132968]"
                 />
                 <button
                   type="submit"
-                  className="bg-primary-green text-primary-text text-base sm:text-lg rounded-full px-4 sm:px-6 py-3 sm:py-4.5 transition-colors duration-200 whitespace-nowrap"
+                  className="bg-[#D4FF5A] text-[#132968] text-base sm:text-lg font-semibold rounded-full px-6 sm:px-8 py-2.5 sm:py-3 whitespace-nowrap hover:bg-[#c4ef4a] transition-colors"
                 >
                   Subscribe
                 </button>
               </div>
 
-              <div className="flex items-center gap-3">
+              <label
+                htmlFor="privacy-agreement"
+                className="flex items-center gap-2 text-white text-sm sm:text-base cursor-pointer"
+              >
                 <input
                   type="checkbox"
                   id="privacy-agreement"
-                  className="w-4 h-4 accent-[#22325a] rounded"
+                  className="w-4 h-4 rounded border-white/60 text-[#D4FF5A] focus:ring-[#D4FF5A]"
                 />
-                <label
-                  htmlFor="privacy-agreement"
-                  className="text-primary-text text-lg"
-                >
-                  I agree to the privacy statement
-                </label>
-              </div>
+                <span>I agree to the privacy statement</span>
+              </label>
             </div>
           </div>
         </Container>
@@ -224,7 +203,7 @@ export default function Footer() {
 
       <FullContainer>
         <Container>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 py-8 border-y border-gray-300 pt-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-6 py-8 border-y border-gray-300 pt-10">
             {/* Quick links */}
             <div className="">
               <div className="font-semibold text-primary-text text-lg sm:text-xl mb-3 w-fit relative">
@@ -259,7 +238,6 @@ export default function Footer() {
               <div className="font-semibold relative text-primary-text text-lg sm:text-xl mb-3 w-fit">
                 Support
               </div>
-
               <ul className="text-primary-text space-y-[10px] text-base sm:text-lg">
                 <li>
                   <Link href="/faqs" className="hover:underline">
@@ -271,47 +249,66 @@ export default function Footer() {
                     Help Center
                   </Link>
                 </li>
-                <li>
-                  <Link
-                    href="mailto:help@oggoair.com"
-                    className="hover:underline"
-                  >
-                    help@oggoair.com
-                  </Link>
-                </li>
               </ul>
             </div>
-            {/* Follow Us */}
+
+            {/* Payment Methods */}
             <div>
               <div className="font-semibold text-primary-text text-lg sm:text-xl mb-3 w-fit relative">
                 Payment Methods
               </div>
-              <div className="flex items-center gap-1">
+              <div className="grid grid-cols-3 gap-2 w-fit">
                 {[1, 2, 3, 4, 5, 6].map((item, index) => (
                   <Image
                     key={index}
                     src={`/img/payment-methods/${item}.png`}
-                    alt="Visa"
+                    alt="Payment method"
                     width={100}
                     height={100}
-                    className="w-fit"
+                    unoptimized
+                    className="w-fit h-10 shadow-md rounded-md object-contain"
                   />
                 ))}
               </div>
               <div className="font-semibold text-primary-text text-lg sm:text-xl mt-10 mb-3 w-fit relative">
                 Travel Partners
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-x-10 gap-y-5 flex-wrap">
                 {[1, 2, 3].map((item, index) => (
                   <Image
                     key={index}
                     src={`/img/partner/${item}.png`}
-                    alt="Visa"
+                    alt="Travel partner"
                     width={100}
                     height={100}
-                    className="w-fit scale-105"
+                    unoptimized
+                    className="w-fit scale-105 h-6 object-contain"
                   />
                 ))}
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div>
+              <div className="font-semibold text-primary-text text-lg sm:text-xl mb-3 w-fit relative">
+                Social Links
+              </div>
+              <div className="flex items-center space-x-3 mt-2">
+                <Link href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                  <span className="bg-[#1a3166] rounded-full w-8 h-8 flex items-center justify-center">
+                    <FacebookIcon size={19} className="text-white" strokeWidth={2.2} />
+                  </span>
+                </Link>
+                <Link href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                  <span className="bg-[#1a3166] rounded-full w-8 h-8 flex items-center justify-center">
+                    <InstagramIcon size={19} className="text-white" strokeWidth={2.2} />
+                  </span>
+                </Link>
+                <Link href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                  <span className="bg-[#1a3166] rounded-full w-8 h-8 flex items-center justify-center">
+                    <LinkedinIcon size={19} className="text-white" strokeWidth={2.2} />
+                  </span>
+                </Link>
               </div>
             </div>
 
@@ -321,112 +318,155 @@ export default function Footer() {
                 Worldwide Network
               </div>
               <div
-                className="relative flex flex-col gap-2 ext-primary-text space-y-[10px] text-base sm:text-lg"
+                className="flex flex-col gap-2 ext-primary-text space-y-[10px] text-base sm:text-lg"
                 ref={langRef}
               >
-                <button
-                  onClick={handleLanguageToggle}
-                  className="flex items-center w-fit justify-between pr-2 md:pr-5 bg-white shadow-xs rounded-full border border-gray-300 p-2"
-                >
-                  <div className=" relative rounded-full flex  items-center justify-center overflow-hidden">
-                    <Image
-                      src={selectedFlagData?.flag}
-                      alt={selectedFlagData?.name}
-                      width={20}
-                      height={20}
-                      className="rounded-full h-5 w-5"
+                <div className="relative inline-block w-fit">
+                  <button
+                    onClick={handleLanguageToggle}
+                    className="flex items-center gap-2 bg-[#132968] rounded-full px-4 py-2.5 text-white w-fit hover:opacity-95 transition-opacity"
+                  >
+                    <div className="rounded-full w-7 h-7 overflow-hidden flex-shrink-0">
+                      <Image
+                        src={selectedFlagData?.flag}
+                        alt={selectedFlagData?.name}
+                        width={28}
+                        height={28}
+                        className="rounded-full w-7 h-7 object-cover"
+                      />
+                    </div>
+                    <span className="text-white text-base font-medium">
+                      {selectedFlagData?.name}
+                    </span>
+                    <CaretDown
+                      size={14}
+                      weight="bold"
+                      className="text-white flex-shrink-0 [&>path]:stroke-[2.5]"
                     />
-                  </div>
-                  <h2 className="text-primary-text text-xs font-medium pl-2">
-                    {selectedFlagData?.name}
-                  </h2>
-                  <CaretDown
-                    size={10}
-                    weight="bold"
-                    className="md:text-base lg:text-lg text-gray-700 [&>path]:stroke-[2.5]"
-                  />
-                </button>
-                <p className="text-primary-text text-sm sm:text-base font-medium">
-                  location, str, 18
-                </p>
-                <div className="flex flex-col gap-1">
-                  <p className="text-[#1A83FF] text-sm sm:text-base font-medium">
-                    example.com
-                  </p>
-                  <p className="text-[#1A83FF] text-sm sm:text-base font-medium">
-                    secondexample.com
-                  </p>
-                </div>
-
-                {langOpen && (
-                  <div className="absolute left-0 mt-10 border border-gray-200 w-40 bg-white rounded-xl shadow-lg z-10 p-2">
-                    {flag.map((item, index) => (
-                      <div
-                        key={index}
-                        onClick={() => handleLanguageSelect(item.countryCode)}
-                        className="flex items-center justify-between text-primary-text text-xs gap-2 px-2 py-1 hover:bg-gray-100 rounded cursor-pointer"
-                      >
-                        <div className="flex items-cente text-primary-text text-xs gap-2">
-                          <Image
-                            src={item.flag}
-                            alt={item.name}
-                            width={20}
-                            height={20}
-                            className="rounded-full w-[20px] h-[20px]"
-                          />
-                          {item.name}
+                  </button>
+                  {langOpen && (
+                    <div className="absolute left-0 top-full mt-1 w-full min-w-[180px] border border-gray-300 bg-white rounded-xl shadow-lg z-20 py-2">
+                      {flag.map((item, index) => (
+                        <div
+                          key={index}
+                          onClick={() => handleLanguageSelect(item.countryCode)}
+                          className="flex items-center justify-between text-primary-text text-sm gap-3 px-4 py-2.5 hover:bg-gray-100 rounded cursor-pointer"
+                        >
+                          <div className="flex items-center text-primary-text gap-3">
+                            <div className="rounded-full w-6 h-6 overflow-hidden flex-shrink-0">
+                              <Image
+                                src={item.flag}
+                                alt={item.name}
+                                width={24}
+                                height={24}
+                                className="rounded-full w-6 h-6 object-cover"
+                              />
+                            </div>
+                            {item.name}
+                          </div>
+                          {selectedLanguage === item.countryCode && (
+                            <Check className="w-4 h-4 text-primary-text" />
+                          )}
                         </div>
-                        {selectedLanguage === item.countryCode && (
-                          <Check className="w-4 h-4 text-primary-text" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {BRANCH_ADDRESSES[selectedLanguage] && (
+                  <>
+                    <p className="text-primary-text text-base sm:text-lg font-medium">
+                      {BRANCH_ADDRESSES[selectedLanguage].line1}
+                    </p>
+                    <p className="text-primary-text text-base sm:text-lg">
+                      {BRANCH_ADDRESSES[selectedLanguage].line2}
+                    </p>
+                    {BRANCH_ADDRESSES[selectedLanguage].website && (
+                      <a
+                        href={BRANCH_ADDRESSES[selectedLanguage].website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#1A83FF] text-base sm:text-lg font-medium hover:underline mb-1 block"
+                      >
+                        {BRANCH_ADDRESSES[selectedLanguage].website.replace("https://", "")}
+                      </a>
+                    )}
+                    <div className="flex flex-col gap-1">
+                      <a
+                        href={`mailto:${BRANCH_ADDRESSES[selectedLanguage].email}`}
+                        className="text-[#1A83FF] text-base sm:text-lg font-medium hover:underline"
+                      >
+                        {BRANCH_ADDRESSES[selectedLanguage].email}
+                      </a>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center justify-center lg:justify-start gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-10 py-6">
+            {/* Logo + tagline */}
+            <div className="flex flex-col items-center md:items-start justify-center">
               <Image
                 src="/logo.png"
                 alt="oggoair"
                 width={500}
                 height={500}
-                className="w-[100px] sm:w-[120px] md:w-[140px] lg:w-[150px]"
+                className="w-[110px] sm:w-[130px] md:w-[150px]"
               />
-              <span className="text-primary-text ml-2">
-                (Official Website of OGGO Travel Platform Ltd.)
+              <span className="text-primary-text text-xs sm:text-sm md:text-base mt-1">
+                (official website of OGGO Travel Platform Ltd)
               </span>
             </div>
-            <div className="flex items-center justify-end gap-3">
-              <a
-                href="#"
-                className="bg-black rounded-full p-2 inline-flex items-center justify-center"
-              >
-                <Facebook size={20} className="text-primary-green" />
-              </a>
-              <a
-                href="#"
-                className="bg-black rounded-full p-2 inline-flex items-center justify-center"
-              >
-                <Instagram size={20} className="text-primary-green" />
-              </a>
-              <a
-                href="#"
-                className="bg-black rounded-full p-2 inline-flex items-center justify-center"
-              >
-                <Linkedin size={20} className="text-primary-green" />
-              </a>
+
+            {/* Email contact */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-primary-text text-base sm:text-lg">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-gray-300 flex items-center justify-center overflow-hidden bg-white">
+                <Image
+                  src="/benefits/secure-payment.png"
+                  alt="24/7 support"
+                  width={48}
+                  height={48}
+                  className="w-11 h-11 object-contain"
+                />
+              </div>
+              <div className="flex flex-col text-center sm:text-left">
+                <span className="text-sm sm:text-base text-gray-500">
+                  Email us at:
+                </span>
+                <span className="font-semibold text-primary-text text-base sm:text-lg">
+                  support@oggotrip.com
+                </span>
+              </div>
+            </div>
+
+            {/* WhatsApp contact */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-primary-text text-base sm:text-lg">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#F5F7FB] flex items-center justify-center overflow-hidden">
+                <Image
+                  src="/benefits/whatsapp.png"
+                  alt="WhatsApp"
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 object-contain"
+                />
+              </div>
+              <div className="flex flex-col text-center sm:text-left">
+                <span className="text-sm sm:text-base text-gray-500">
+                  Get support via WhatsApp:
+                </span>
+                <span className="font-semibold text-primary-text text-lg sm:text-xl">
+                  07377300000
+                </span>
+              </div>
             </div>
           </div>
         </Container>
       </FullContainer>
 
-      <FullContainer>
+      <FullContainer className="bg-[#132968]">
         <Container>
-          <div className="flex items-center justify-between gap-4 py-3 border-t border-gray-300">
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 text-primary-text text-sm sm:text-lg py-4 text-center sm:text-left">
+          <div className="flex items-center justify-between gap-4 py-3 border-t border-white/20">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 text-white text-sm sm:text-lg py-4 text-center sm:text-left">
               <a href="#" className="underline">
                 Refund & Cancelation Policy
               </a>
@@ -437,7 +477,7 @@ export default function Footer() {
                 Privacy Policy
               </a>
             </div>
-            <div className="text-primary-text text-sm sm:text-lg mt-2 md:mt-0 text-center">
+            <div className="text-white text-sm sm:text-lg mt-2 md:mt-0 text-center">
               ©2024 OggoAir. – All Rights Reserved
             </div>
           </div>

@@ -1,13 +1,17 @@
 /**
  * Price Converter Utility
- * Converts USD prices to EUR/GBP/USD for display purposes using live exchange rates
+ * Converts USD prices to multiple currencies for display purposes using live exchange rates
  */
 
-// Currency constants
+// Currency constants (matches oggo-air)
 export const CURRENCIES = {
     EUR: { code: 'EUR', symbol: '€', name: 'Euro' },
-    GBP: { code: 'GBP', symbol: '£', name: 'Pound' },
     USD: { code: 'USD', symbol: '$', name: 'Dollar' },
+    RON: { code: 'RON', symbol: 'lei', name: 'Romanian Leu' },
+    MDL: { code: 'MDL', symbol: 'L', name: 'Moldovan Leu' },
+    TRY: { code: 'TRY', symbol: '₺', name: 'Turkish Lira' },
+    JOD: { code: 'JOD', symbol: 'JD', name: 'Jordanian Dinar' },
+    RWF: { code: 'RWF', symbol: 'RF', name: 'Rwandan Franc' },
 };
 
 // Default currency
@@ -16,45 +20,40 @@ const DEFAULT_CURRENCY = 'EUR';
 // localStorage key for selected currency
 const CURRENCY_STORAGE_KEY = 'oggoair_selected_currency';
 
-// Fallback exchange rates (used if API fails or is not configured)
+// Valid currency codes for validation
+const VALID_CURRENCIES = ['EUR', 'USD', 'RON', 'MDL', 'TRY', 'JOD', 'RWF'];
+
+// Fallback exchange rates (used if API fails or is not configured) - 1 USD = X
 const FALLBACK_RATES = {
-    EUR: 0.92, // 1 USD = 0.92 EUR
-    GBP: 0.79, // 1 USD = 0.79 GBP
-    USD: 1.0,  // 1 USD = 1.0 USD
+    EUR: 0.92,
+    USD: 1.0,
+    RON: 4.6,
+    MDL: 18.0,
+    TRY: 32.0,
+    JOD: 0.71,
+    RWF: 1300,
 };
 
 // Cache for exchange rates to avoid too many API calls
-// Structure: { currency: { rate, timestamp, source } }
-let exchangeRateCache = {
-    EUR: {
-        rate: FALLBACK_RATES.EUR,
-        timestamp: 0,
-        source: 'fallback',
-    },
-    GBP: {
-        rate: FALLBACK_RATES.GBP,
-        timestamp: 0,
-        source: 'fallback',
-    },
-    USD: {
-        rate: FALLBACK_RATES.USD,
-        timestamp: 0,
-        source: 'fallback',
-    },
-};
+let exchangeRateCache = Object.fromEntries(
+    VALID_CURRENCIES.map((code) => [
+        code,
+        { rate: FALLBACK_RATES[code], timestamp: 0, source: 'fallback' },
+    ])
+);
 
 // Cache duration: 1 hour (3600000 ms)
 const CACHE_DURATION = 60 * 60 * 1000;
 
 /**
  * Get selected currency from localStorage or return default
- * @returns {string} Currency code (EUR, GBP, or USD)
+ * @returns {string} Currency code (EUR, USD, RON, MDL, TRY, JOD, or RWF)
  */
 export const getSelectedCurrency = () => {
     if (typeof window === 'undefined') return DEFAULT_CURRENCY;
     try {
         const stored = localStorage.getItem(CURRENCY_STORAGE_KEY);
-        if (stored && (stored === 'EUR' || stored === 'GBP' || stored === 'USD')) {
+        if (stored && VALID_CURRENCIES.includes(stored)) {
             return stored;
         }
     } catch (error) {
@@ -65,17 +64,16 @@ export const getSelectedCurrency = () => {
 
 /**
  * Set selected currency in localStorage and dispatch event for components to update
- * @param {string} currency - Currency code (EUR, GBP, or USD)
+ * @param {string} currency - Currency code (EUR, USD, RON, MDL, TRY, JOD, or RWF)
  */
 export const setSelectedCurrency = (currency) => {
     if (typeof window === 'undefined') return;
-    if (currency !== 'EUR' && currency !== 'GBP' && currency !== 'USD') {
+    if (!VALID_CURRENCIES.includes(currency)) {
         console.warn('Invalid currency:', currency);
         return;
     }
     try {
         localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
-        // Dispatch custom event to notify components of currency change
         window.dispatchEvent(new CustomEvent('currencyChanged', { detail: { currency } }));
     } catch (error) {
         console.warn('Failed to save currency to localStorage:', error);
@@ -91,6 +89,10 @@ async function fetchExchangeRate(currency = 'EUR') {
     // USD always returns 1.0
     if (currency === 'USD') {
         return 1.0;
+    }
+    // Non-API currencies use fallback rates only
+    if (!['EUR'].includes(currency)) {
+        return FALLBACK_RATES[currency] ?? FALLBACK_RATES.EUR;
     }
 
     // Check if we have a valid cached rate for this currency

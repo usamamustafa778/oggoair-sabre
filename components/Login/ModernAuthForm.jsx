@@ -745,58 +745,81 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
       onClick={handleClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto relative"
+        className="bg-white shadow-2xl w-full max-w-4xl mx-auto relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
+        {/* Close button (top-right, like oggo-air) */}
         <button
           onClick={handleClose}
-          className="absolute top-10 right-8 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-4 right-4 text-primary-text hover:text-gray-600 transition-colors z-10"
         >
           <X className="w-6 h-6" />
         </button>
 
-        {/* Back button */}
-        {currentStep !== "options" && (
-          <button
-            onClick={handleBack}
-            className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-        )}
-
-        {/* Logo */}
-        <div className="pt-7 pb-6 text-center">
-          <Image
-            src="/logo.png"
-            alt="OggoAir"
-            width={120}
-            height={120}
-            className="h-12 w-auto mx-auto"
-          />
-        </div>
-
-        {/* Content */}
-        <div className="px-8 pb-8">
-          {/* Error message */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <p className="text-red-700 text-sm">{error}</p>
+        <div className="flex flex-col md:flex-row">
+          {/* Left promotional panel (desktop) */}
+          <div className="hidden md:flex md:w-1/2 bg-[#F8FBFF] border-r border-gray-100 px-10 py-10">
+            <div className="flex flex-col justify-center">
+              <div>
+                <img
+                  src="/image.png"
+                  alt="oggoair"
+                  className="w-full h-[250px] object-contain"
+                />
+              </div>
+              <h2 className="text-3xl font-semibold text-center text-primary-text mb-3">
+                Unlock the Best of oggotrip
+              </h2>
+              <p className="text-sm text-primary-text text-center leading-relaxed mt-4">
+                Sign up for quick, seamless booking, fast refunds, and exclusive
+                discounts via our referral program.
+              </p>
             </div>
-          )}
+          </div>
 
-          {/* Success message */}
-          {success && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <p className="text-green-700 text-sm">{success}</p>
+          {/* Right auth / signup content */}
+          <div className="w-full md:w-1/2 px-6 sm:px-8 py-8">
+            {/* Back button appears only for inner steps, not on options */}
+            {currentStep !== "options" && (
+              <button
+                onClick={handleBack}
+                className="mb-4 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+            )}
+
+            {/* Logo at top of right column */}
+            <div className="mb-6 flex justify-center md:justify-center">
+              <Image
+                src="/logo.png"
+                alt="OggoAir"
+                width={160}
+                height={160}
+                className="h-12 w-auto md:h-20"
+              />
             </div>
-          )}
 
-          {/* Step content */}
-          {renderStepContent()}
+            {/* Error message */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* Success message */}
+            {success && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                <p className="text-green-700 text-sm">{success}</p>
+              </div>
+            )}
+
+            {/* Dynamic step content (buttons, email form, OTP, etc.) */}
+            {renderStepContent()}
+          </div>
         </div>
       </div>
     </div>

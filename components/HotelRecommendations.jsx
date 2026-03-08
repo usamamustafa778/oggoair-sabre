@@ -1,7 +1,11 @@
-import React, { useState } from "react";
-import { Star } from "phosphor-react";
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import Container from "./common/Container";
 import FullContainer from "./common/FullContainer";
+import { Star } from "phosphor-react";
+import { getSelectedCurrency, CURRENCIES } from "@/utils/priceConverter";
 
 const cities = [
   "Islamabad",
@@ -17,28 +21,28 @@ const hotels = [
     city: "Islamabad",
     name: "Islamabad Serena Hotel",
     img: "/img/e1.png",
-    price: "Start from₨ 5,082.21",
+    price: 435,
     rating: 4.9,
   },
   {
     city: "Islamabad",
     name: "Islamabad Serena Hotel",
     img: "/img/e2.png",
-    price: "Start from₨ 5,082.21",
+    price: 435,
     rating: 4.9,
   },
   {
     city: "Islamabad",
     name: "Islamabad Serena Hotel",
     img: "/img/e3.png",
-    price: "Start from₨ 5,082.21",
+    price: 435,
     rating: 4.9,
   },
   {
     city: "Islamabad",
     name: "Islamabad Serena Hotel",
     img: "/img/e4.png",
-    price: "Start from₨ 5,082.21",
+    price: 435,
     rating: 4.9,
   },
 ];
@@ -46,6 +50,7 @@ const hotels = [
 export default function HotelRecommendations() {
   const [activeCity, setActiveCity] = useState(cities[0]);
   const [page, setPage] = useState(0);
+  const [currency, setCurrency] = useState("EUR");
   const cardsPerPage = 4;
   const filteredHotels = hotels.filter((h) => h.city === activeCity);
   const pagedHotels = filteredHotels.slice(
@@ -54,98 +59,92 @@ export default function HotelRecommendations() {
   );
   const totalPages = Math.ceil(filteredHotels.length / cardsPerPage) || 1;
 
-  return (
-    <FullContainer className="  ">
-      <Container className=" py-8 sm:py-12 md:py-16 lg:py-20 ">
-        {/* Heading */}
+  useEffect(() => {
+    setCurrency(getSelectedCurrency());
+    const handleCurrencyChange = () => setCurrency(getSelectedCurrency());
+    window.addEventListener("currencyChanged", handleCurrencyChange);
+    return () => window.removeEventListener("currencyChanged", handleCurrencyChange);
+  }, []);
 
-        <div className="bg-gradient-to-r from-primary-green via-primary-green to-primary-text/20 w-fit rounded-full p-[1.5px] mb-10 lg:mb-14">
-          <span className="inline-block text-base md:text-2xl lg:text-[28px] font-semibold text-primary-text rounded-full px-4 py-1 bg-white">
-            <span className="text-primary-text ">
-              Exclusive Hotel Recommendations
-            </span>
-          </span>
+  const symbol = CURRENCIES[currency]?.symbol ?? "€";
+
+
+  return (
+    <FullContainer className="py-12 md:py-16 bg-white">
+      <Container className="mx-auto max-w-7xl">
+        {/* Title with lime-green accent behind "Exclusive Hotel" */}
+        <div className="mb-8 md:mb-10 lg:mb-14 ">
+          <h2 className="text-2xl md:text-3xl font-medium" style={{ color: "#132968" }}>
+            <span className="relative inline-block">
+              <span className="relative z-10">Exclusive Hotel</span>
+            </span>{" "}
+            Recommendations
+          </h2>
         </div>
 
-        {/* Tabs */}
+        {/* Hotel cards - horizontal scrollable row */}
         <div
-          className="mb-6 sm:mb-8 overflow-x-scroll rounded-full"
+          className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4 -mx-2 px-2"
           style={{
             scrollbarWidth: "none",
             msOverflowStyle: "none",
-            WebkitScrollbar: { display: "none" },
           }}
         >
-          <div
-            className="flex gap-1 sm:gap-2  bg-gray-100 w-full sm:w-fit rounded-full p-1.5 overflow-x-auto"
-            style={{
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-              WebkitScrollbar: { display: "none" },
-            }}
-          >
-            {cities.map((city) => (
-              <button
-                key={city}
-                onClick={() => {
-                  setActiveCity(city);
-                  setPage(0);
-                }}
-                className={`px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 rounded-full font-semibold text-sm sm:text-base border-none focus:outline-none transition whitespace-nowrap flex-shrink-0 ${
-                  activeCity === city
-                    ? "bg-[#d7fa7c] text-[#22325a]"
-                    : "bg-white text-[#22325a]"
-                } shadow-sm hover:shadow-md`}
-              >
-                {city}
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8">
           {pagedHotels.map((hotel, idx) => (
-            <div
+            <Link
               key={idx}
-              className="rounded-[16px] flex flex-col overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 bg-white"
+              href="/hotelSearch"
+              className="flex-shrink-0 snap-start w-[75%] sm:w-[48%] md:w-[24%]"
             >
-              <img
-                src={hotel.img}
-                alt={hotel.name}
-                className="w-full h-48 sm:h-52 md:h-60 object-cover object-center rounded-t-[16px]"
-              />
-              <div className="flex-1 flex flex-col justify-between p-3 sm:p-4">
-                <div className="flex items-start justify-between mb-2 gap-2">
-                  <span className="text-[#22325a] font-bold text-sm sm:text-base leading-tight flex-1 min-w-0">
-                    {hotel.name}
-                  </span>
-                  <span className="flex items-center gap-1 text-[#ff9800] font-bold text-sm sm:text-base flex-shrink-0">
-                    <Star
-                      size={16}
-                      weight="fill"
-                      className="text-[#ff9800] sm:w-[18px] sm:h-[18px]"
-                    />
-                    {hotel.rating}
-                  </span>
+              <div className="relative rounded-2xl overflow-hidden bg-white group hover:shadow-[0_5px_20px_rgba(0,0,0,0.1)]">
+                <div className="relative aspect-3/4 overflow-hidden">
+                  {/* Hotel image */}
+                  <img
+                    src={hotel.img}
+                    alt={hotel.name}
+                    className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                  />
+
+                  {/* Dark gradient for default state (text over image) */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent opacity-100 transition-opacity duration-300 group-hover:opacity-0" />
+
+                  {/* Default text over image */}
+                  <div className="absolute inset-x-0 bottom-0 flex flex-col justify-center items-center p-4 text-white opacity-100 translate-y-0 transition-all duration-300  group-hover:bg-white group-hover:text-[#132968] ">
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <span className="font-semibold text-sm sm:text-base truncate">
+                        {hotel.name}
+                      </span>
+                      <span className="flex items-center gap-1 flex-shrink-0">
+                        <Star size={16} weight="fill" className="text-amber-400" />
+                        <span className="font-semibold text-xs sm:text-sm">
+                          {hotel.rating}
+                        </span>
+                      </span>
+                    </div>
+                    <p className="font-semibold text-sm sm:text-base">
+                      Book from {hotel.price} {symbol}
+                    </p>
+                  </div>
                 </div>
-                <button className="w-full bg-primary-green text-primary-text font-medium text-sm sm:text-base rounded-full px-3 sm:px-4 py-2 mt-auto shadow hover:bg-primary-green/80 transition-colors duration-200">
-                  {hotel.price}
-                </button>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
-        {/* Pagination Dots */}
-        <div className="flex justify-center gap-2 sm:gap-3">
+
+        {/* Pagination dots */}
+        <div className="flex justify-center gap-2 mt-6">
           {Array.from({ length: totalPages }).map((_, i) => (
             <button
               key={i}
               onClick={() => setPage(i)}
-              className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-200 hover:scale-110 ${
+              className={`rounded-full transition-all duration-200 ${
                 i === page
-                  ? "bg-[#22325a] shadow-md"
-                  : "bg-[#e3eafc] hover:bg-[#d1d9f0]"
+                  ? "w-4 h-4"
+                  : "w-3 h-3"
               }`}
+              style={{
+                backgroundColor: i === page ? "#132968" : "#e5e7eb",
+              }}
               aria-label={`Go to page ${i + 1}`}
             />
           ))}

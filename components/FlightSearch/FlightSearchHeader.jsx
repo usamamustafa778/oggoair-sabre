@@ -12,8 +12,6 @@ const FlightSearchHeader = ({
 }) => {
   const router = useRouter();
 
-  console.log("searchParams", searchParams?.depAirport);
-
   // Extract search parameters from URL or props
   const fromIata = searchParams?.depAirport;
   const toIata = searchParams?.arrAirport || router.query.arrAirport;
@@ -75,6 +73,18 @@ const FlightSearchHeader = ({
 
   const displayDate = formatDateForDisplay(date);
   const displayReturnDate = returnDate ? formatDateForDisplay(returnDate) : "";
+  const fromIataCode = fromIata || searchParams?.depAirport || router.query.depAirport;
+  const toIataCode = searchParams?.arrAirport || router.query.arrAirport || toIata;
+  const fromDisplay = from
+    ? fromIataCode && !String(from).includes(`(${fromIataCode})`)
+      ? `${from} (${fromIataCode})`
+      : from
+    : "";
+  const toDisplay = to
+    ? toIataCode && !String(to).includes(`(${toIataCode})`)
+      ? `${to} (${toIataCode})`
+      : to
+    : "";
 
   return (
     <div className=" pt-4 sm:pt-6 lg:pt-6.5 relative z-30">
@@ -94,9 +104,9 @@ const FlightSearchHeader = ({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-base sm:text-lg lg:text-xl text-primary-text mb-1 sm:mb-3 leading-tight">
-                    <span className="block sm:inline">{from}</span>
+                    <span className="block sm:inline">{fromDisplay || from}</span>
                     <span className="hidden sm:inline"> → </span>
-                    <span className="block sm:inline sm:ml-1">{to}</span>
+                    <span className="block sm:inline sm:ml-1">{toDisplay || to}</span>
                   </div>
                   <div className="text-sm sm:text-base text-primary-text leading-tight">
                     {tripType === "round-trip" && displayReturnDate

@@ -13,6 +13,7 @@ const EnhancedDatePicker = ({
   className = "",
   departureDate = null, // For range highlighting
   returnDate = null, // For range highlighting
+  usePrimaryColor = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -392,11 +393,16 @@ const EnhancedDatePicker = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Input field */}
       <div
-        className={`relative min-h-[60px] pt-6 pb-2 px-4 bg-white ${className} ${
+        className={`relative min-h-[60px] pt-6 pb-2 px-4 ${className.includes("bg-") ? "" : "bg-white"} ${className} ${
           className.includes("border-l") ? "border-l border-gray-300" : ""
         }`}
       >
-        <label className="block absolute top-2 left-4 text-xs font-medium text-gray-500">
+        <label
+          className={`block absolute top-2 left-4 text-xs font-medium ${
+            usePrimaryColor ? "" : "text-gray-500"
+          }`}
+          style={usePrimaryColor ? { color: "#132968" } : undefined}
+        >
           {label}
         </label>
         <button
@@ -404,14 +410,22 @@ const EnhancedDatePicker = ({
           onClick={() => {
             setIsOpen(!isOpen);
             if (!isOpen) {
-              // Calculate position when opening
               setTimeout(calculatePosition, 0);
             }
           }}
-          className="w-full text-left  text-primary-text font-[500] text-lg focus:outline-none min-w-[160px]  flex items-center justify-between"
+          className="w-full text-left text-primary-text font-[500] text-lg focus:outline-none min-w-[160px] flex items-center justify-between"
         >
           <span
-            className={selectedDate ? "text-primary-text" : "text-gray-400"}
+            className={
+              selectedDate
+                ? "text-primary-text"
+                : usePrimaryColor
+                ? ""
+                : "text-gray-400"
+            }
+            style={
+              !selectedDate && usePrimaryColor ? { color: "#132968" } : undefined
+            }
           >
             {selectedDate ? formatDate(selectedDate) : placeholder}
           </span>

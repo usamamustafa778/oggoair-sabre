@@ -4,105 +4,57 @@ import Container from "./common/Container";
 import FullContainer from "./common/FullContainer";
 import {
   Check,
-  Plane,
-  Building2,
-  Car,
-  Bus,
-  Train,
   ChevronDown,
+  User,
+  Menu,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import ModernAuthForm from "./Login/ModernAuthForm";
 import { useSession, signOut } from "next-auth/react";
 import { tokenUtils } from "@/config/api";
+import {
+  getSelectedCurrency,
+  setSelectedCurrency,
+  CURRENCIES,
+} from "@/utils/priceConverter";
 
 export default function Navbar() {
   const [langOpen, setLangOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [airplaneOpen, setAirplaneOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("US");
-  const [selectedTravelType, setSelectedTravelType] = useState("Flight");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isCustomAuth, setIsCustomAuth] = useState(false);
   const [customUser, setCustomUser] = useState(null);
   const { data: session, status } = useSession();
   const [navTick, setNavTick] = useState(0);
-  const airplaneRef = useRef(null);
+  const [selectedCurrency, setSelectedCurrencyState] = useState("EUR");
   const langRef = useRef(null);
   const userRef = useRef(null);
-  const router = useRouter();
 
-  const flag = [
-    {
-      countryCode: "US",
-      name: "English (US)",
-      flag: "/st-images/flags/usa.webp",
-    },
-    {
-      countryCode: "SA",
-      name: "العربية",
-      flag: "/st-images/flags/jordan.webp",
-    },
-    {
-      countryCode: "DE",
-      name: "Deutsch",
-      flag: "/st-images/flags/germany.png",
-    },
-    {
-      countryCode: "RO",
-      name: "Română",
-      flag: "/st-images/flags/romania.png",
-    },
-    {
-      countryCode: "TR",
-      name: "Türkçe",
-      flag: "/st-images/flags/turkey.png",
-    },
-    {
-      countryCode: "RU",
-      name: "Русский",
-      flag: "/st-images/flags/russia.png",
-    },
+  const regions = [
+    { countryCode: "US", region: "Global", language: "English", flag: "/st-images/flags/usa.png" },
+    { countryCode: "RO", region: "Romania", language: "Romanian", flag: "/st-images/flags/romania.png" },
+    { countryCode: "MD", region: "Moldova", language: "Romanian", flag: "/st-images/flags/mdl.png" },
+    { countryCode: "TR", region: "Türkiye", language: "Türkçe", flag: "/st-images/flags/turkey.png" },
+    { countryCode: "JO", region: "Jordan", language: "العربية", flag: "/st-images/flags/jordan.png" },
+    { countryCode: "RW", region: "Rwanda", language: "English", flag: "/st-images/flags/rwanda.png" },
   ];
 
-  const travelTypes = [
-    {
-      name: "Flight",
-      icon: Plane,
-      image: null,
-    },
-    {
-      name: "Hotel",
-      icon: Building2,
-      image: null,
-    },
-    {
-      name: "Cars",
-      icon: Car,
-      image: null,
-    },
-    {
-      name: "EuroBus",
-      icon: Bus,
-      image: null,
-    },
-    {
-      name: "EuroRail",
-      icon: Train,
-      image: null,
-    },
-  ];
+  const PRIMARY_CURRENCY_CODES = ["EUR", "USD", "RON", "MDL", "TRY", "JOD", "RWF"];
+  const CURRENCY_FLAGS = {
+    EUR: "/st-images/flags/eur.png",
+    USD: "/st-images/flags/usa.png",
+    RON: "/st-images/flags/romania.png",
+    MDL: "/st-images/flags/mdl.png",
+    TRY: "/st-images/flags/turkey.png",
+    JOD: "/st-images/flags/jordan.png",
+    RWF: "/st-images/flags/rwanda.png",
+  };
 
-  // Get the selected flag data
-  const selectedFlagData = flag.find(
+  const selectedFlagData = regions.find(
     (item) => item.countryCode === selectedLanguage
-  );
-
-  // Get the selected travel type data
-  const selectedTravelTypeData = travelTypes.find(
-    (item) => item.name === selectedTravelType
   );
 
   const handleLanguageSelect = (countryCode) => {
@@ -110,37 +62,34 @@ export default function Navbar() {
     setLangOpen(false);
   };
 
-  const handleTravelTypeSelect = (travelType) => {
-    setSelectedTravelType(travelType);
-    setAirplaneOpen(false);
-
-    // Navigate to home page with travel type query
-    router.push({
-      pathname: "/",
-      query: { type: travelType.toLowerCase() },
-    });
+  const handleCurrencySelect = (currencyCode) => {
+    setSelectedCurrencyState(currencyCode);
+    setSelectedCurrency(currencyCode);
+    setCurrencyOpen(false);
   };
 
   const handleUserToggle = () => {
     if (status === "authenticated" || isCustomAuth) {
       setUserOpen(!userOpen);
       setLangOpen(false);
-      setAirplaneOpen(false); // Close airplane dropdown when opening user dropdown
+      setCurrencyOpen(false);
     } else {
       setShowAuthModal(true);
     }
   };
 
-  const handleLanguageToggle = () => {
+  const handleLanguageToggle = (e) => {
+    e.stopPropagation();
     setLangOpen(!langOpen);
-    setUserOpen(false); // Close user dropdown when opening language dropdown
-    setAirplaneOpen(false); // Close airplane dropdown when opening language dropdown
+    setCurrencyOpen(false);
+    setUserOpen(false);
   };
 
-  const handleAirplaneToggle = () => {
-    setAirplaneOpen(!airplaneOpen);
-    setLangOpen(false); // Close language dropdown when opening airplane dropdown
-    setUserOpen(false); // Close user dropdown when opening airplane dropdown
+  const handleCurrencyToggle = (e) => {
+    e.stopPropagation();
+    setCurrencyOpen(!currencyOpen);
+    setLangOpen(false);
+    setUserOpen(false);
   };
 
   // Handle successful authentication
@@ -213,6 +162,12 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      setSelectedCurrencyState(getSelectedCurrency());
+    }
+  }, [navTick]);
+
+  useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY;
       setIsScrolled(scrollTop > 0);
@@ -222,40 +177,14 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Update selected travel type based on current route
-  useEffect(() => {
-    const pathname = router.pathname;
-    const queryType = router.query.type;
-
-    if (pathname === "/hotelSearch" || queryType === "hotel") {
-      setSelectedTravelType("Hotel");
-    } else if (pathname === "/bus/busSearch" || queryType === "eurobus") {
-      setSelectedTravelType("EuroBus");
-    } else if (
-      pathname === "/flight/flightSearch" ||
-      pathname === "/returnFlights" ||
-      queryType === "flight"
-    ) {
-      setSelectedTravelType("Flight");
-    } else {
-      // Default to Flight for home page or other pages
-      setSelectedTravelType("Flight");
-    }
-  }, [router.pathname, router.query.type]);
-
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Close language dropdown if click is outside
       if (langRef.current && !langRef.current.contains(event.target)) {
         setLangOpen(false);
+        setCurrencyOpen(false);
       }
-      // Close user dropdown if click is outside
       if (userRef.current && !userRef.current.contains(event.target)) {
         setUserOpen(false);
-      }
-      // Close airplane dropdown if click is outside
-      if (airplaneRef.current && !airplaneRef.current.contains(event.target)) {
-        setAirplaneOpen(false);
       }
     };
 
@@ -288,10 +217,10 @@ export default function Navbar() {
 
   return (
     <FullContainer
-      className={`transition-all duration-300 fixed top-0 !h-fit z-[9999] ${
+      className={`transition-all duration-300 fixed top-0 left-0 right-0 !h-fit z-[9999] pb-2 ${
         isScrolled
-          ? "bg-primary-text shadow-[0_4px_24px_0_rgba(34,50,90,0.08)] py-0.5"
-          : "bg-transparent min-[400px]:pt-[16px] sm:pt-[25px] md:pt-[38px]"
+          ? "bg-white shadow-[0_4px_24px_0_rgba(0,0,0,0.08)] py-2"
+          : "bg-white min-[400px]:pt-4 sm:pt-6 md:pt-8"
       }`}
     >
       <Container className="flex flex-col px-2 min-[400px]:px-3 sm:px-4 md:px-6">
@@ -300,151 +229,170 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center flex-shrink-0">
             <Image
-              src={
-                router.pathname?.startsWith("/dashboard")
-                  ? "/logo-white-green.png"
-                  : isScrolled
-                  ? "/logo-white-green.png"
-                  : router.pathname === "/"
-                  ? "/logo-white.png"
-                  : "/logo.png"
-              }
+              src="/logo.png"
               alt="oggoair"
-              width={500}
-              height={500}
-              className={`w-[75px] min-[400px]:w-[85px] sm:w-[120px] md:w-[140px] lg:w-[165px] transition-all duration-300`}
+              width={600}
+              height={600}
+              className={`w-[95px] min-[400px]:w-[110px] sm:w-[150px] md:w-[175px] lg:w-[200px] transition-all duration-300`}
             />
           </Link>
 
-          {/* Right controls - each in its own box, spaced apart */}
-          <div className="items-center flex gap-1 min-[400px]:gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
-            {/* Travel type dropdown */}
-            <div className="relative" ref={airplaneRef}>
-              <button
-                onClick={handleAirplaneToggle}
-                className="flex items-center gap-1 bg-gray-50 hover:bg-white transition-colors duration-300 rounded-full p-0.5 md:p-1"
-              >
-                {selectedTravelTypeData.image ? (
-                  <Image
-                    src={selectedTravelTypeData.image}
-                    alt={selectedTravelTypeData.name}
-                    width={500}
-                    height={500}
-                    className="w-[16px] h-[16px] min-[400px]:w-[18px] min-[400px]:h-[18px] sm:w-[26px] sm:h-[26px] md:w-[35px] md:h-[35px] lg:w-[42px] lg:h-[42px]"
-                  />
-                ) : (
-                  <div className="bg-primary-green rounded-full p-0.5 md:p-1.5 flex items-center justify-center">
-                    <selectedTravelTypeData.icon className="w-5 h-5 md:w-6 md:h-6 text-primary-text" />
-                  </div>
-                )}
-                <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-700 mr-1 md:mx-2 cursor-pointer" />
-              </button>
-              {airplaneOpen && (
-                <div className="absolute left-0 sm:left-auto sm:right-0 mt-1 w-40 sm:w-44 bg-white rounded-lg overflow-hidden shadow-lg z-10 p-2">
-                  {travelTypes.map((travelType, index) => (
-                    <div
-                      key={index}
-                      onClick={() => handleTravelTypeSelect(travelType.name)}
-                      className="flex items-center justify-between text-primary-text text-xs sm:text-sm gap-2 px-2 py-2.5 hover:bg-gray-100 rounded cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center gap-2 text-primary-text text-xs sm:text-sm">
-                        {travelType.image ? (
-                          <Image
-                            src={travelType.image}
-                            alt={travelType.name}
-                            width={16}
-                            height={16}
-                            className="w-4 h-4 flex-shrink-0"
-                          />
-                        ) : (
-                          <travelType.icon className="w-4 h-4 text-gray-700 flex-shrink-0" />
-                        )}
-                        <span className="whitespace-nowrap">
-                          {travelType.name}
-                        </span>
-                      </div>
-                      {selectedTravelType === travelType.name && (
-                        <Check className="w-4 h-4 text-primary-text flex-shrink-0" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Language dropdown */}
+          {/* Right controls: Region/Language → Currency → Sign in → User → Menu */}
+          <div className="items-center flex gap-2 sm:gap-3 flex-shrink-0">
+            {/* Region / Language – separate button */}
             <div className="relative" ref={langRef}>
-              <button
-                onClick={handleLanguageToggle}
-                className="flex items-center gap-1 bg-gray-50 hover:bg-white transition-colors duration-300 rounded-full p-0.5 md:p-1"
-              >
-                <div className="overflow-hidden rounded-full h-6 w-6 md:h-9 md:w-9">
-                  <Image
-                    src={selectedFlagData.flag}
-                    alt={selectedFlagData.name}
-                    width={90}
-                    height={90}
-                    className="w-full h-full"
-                  />
-                </div>
-                <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-700 mr-1 md:mx-2 cursor-pointer" />
-              </button>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={handleLanguageToggle}
+                  className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2.5 bg-white hover:bg-slate-50 transition-colors duration-200 rounded-full border border-gray-300 text-[#132968]"
+                >
+                  {selectedFlagData && (
+                    <>
+                      <span className="text-xs sm:text-sm font-semibold">
+                        {selectedFlagData.language}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCurrencyToggle}
+                  className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2.5 bg-white hover:bg-slate-50 transition-colors duration-200 rounded-full border border-gray-300 text-[#132968]"
+                >
+                  <span className="text-xs sm:text-sm font-semibold">
+                    {selectedCurrency}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                </button>
+              </div>
 
+              {/* Region & Language dropdown */}
               {langOpen && (
-                <div className="absolute right-0 mt-1 w-40 sm:w-44 bg-white rounded-lg overflow-hidden shadow-lg z-10 p-2">
-                  {flag.map((item, index) => (
-                    <div
-                      key={index}
-                      onClick={() => handleLanguageSelect(item.countryCode)}
-                      className="flex items-center justify-between text-primary-text text-xs sm:text-sm gap-2 px-2 py-2.5 hover:bg-gray-100 rounded cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center text-primary-text text-xs sm:text-sm gap-2 sm:gap-3 truncate">
-                        <Image
-                          src={item.flag}
-                          alt={item.name}
-                          width={20}
-                          height={20}
-                          className="rounded-full w-[16px] h-[16px] sm:w-[20px] sm:h-[20px] flex-shrink-0"
-                        />
-                        <span className="truncate">{item.name}</span>
-                      </div>
-                      {selectedLanguage === item.countryCode && (
-                        <Check className="w-4 h-4 text-primary-text flex-shrink-0" />
-                      )}
+                <div className="absolute left-0 mt-3 w-[300px] sm:w-[340px] z-10">
+                  <div className="bg-[#F5F7FB] rounded-2xl shadow-2xl border border-slate-100 px-4 py-4 sm:px-5 sm:py-5">
+                    <h3 className="text-base sm:text-lg font-semibold text-[#132968]">
+                      Region &amp; Language
+                    </h3>
+                    <div className="mt-2 h-[2px] w-12 bg-[#132968]" />
+                    <p className="mt-4 text-sm font-medium text-slate-500">
+                      Suggested region and language
+                    </p>
+                    <div className="mt-3 space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {regions.map((item) => {
+                        const isActive = selectedLanguage === item.countryCode;
+                        return (
+                          <button
+                            key={item.countryCode}
+                            type="button"
+                            onClick={() => handleLanguageSelect(item.countryCode)}
+                            className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl bg-white transition-all border ${
+                              isActive
+                                ? "border-[#13296833] shadow-md"
+                                : "border-transparent shadow-sm hover:shadow-md hover:border-slate-100"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Image
+                                src={item.flag}
+                                alt={item.region}
+                                width={28}
+                                height={20}
+                                className="w-8 h-6 rounded-md object-contain flex-shrink-0"
+                              />
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-semibold text-[#132968] truncate">
+                                  {item.region}
+                                </span>
+                                <span className="text-xs text-slate-500 truncate">
+                                  {item.language}
+                                </span>
+                              </div>
+                            </div>
+                            {isActive && (
+                              <Check className="w-4 h-4 text-[#132968] flex-shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
-                  ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Currency dropdown */}
+              {currencyOpen && (
+                <div className="absolute right-0 mt-3 w-[200px] sm:w-[220px] z-10">
+                  <div className="bg-[#F5F7FB] rounded-2xl shadow-2xl border border-slate-100 px-4 py-4 sm:px-5 sm:py-5">
+                    <h3 className="text-base sm:text-lg font-semibold text-[#132968]">
+                      Currency
+                    </h3>
+                    <div className="mt-2 h-[2px] w-12 bg-[#132968]" />
+                    <div className="mt-4 flex flex-col gap-2">
+                      {PRIMARY_CURRENCY_CODES.map((code) => {
+                        const currency =
+                          Object.values(CURRENCIES).find((c) => c.code === code) || { code };
+                        const isCurrActive = selectedCurrency === currency.code;
+                        const currencyFlag = CURRENCY_FLAGS[code];
+
+                        return (
+                          <button
+                            key={code}
+                            type="button"
+                            onClick={() => handleCurrencySelect(currency.code)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border transition-all ${
+                              isCurrActive
+                                ? "border-[#13296833] shadow-md"
+                                : "border-transparent shadow-sm hover:shadow-md hover:border-slate-100"
+                            }`}
+                          >
+                            {currencyFlag ? (
+                              <Image
+                                src={currencyFlag}
+                                alt={currency.code}
+                                width={26}
+                                height={18}
+                                className="w-8 h-6 rounded-md object-contain flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8 h-6 rounded-md bg-slate-100 flex items-center justify-center text-[10px] font-semibold text-slate-500 flex-shrink-0">
+                                {code.slice(0, 2)}
+                              </div>
+                            )}
+                            <span className="text-sm font-semibold text-slate-600">
+                              {code}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* User dropdown content */}
+            {/* Sign in - between Language and User */}
+            {!(status === "authenticated" || isCustomAuth) && (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-5 py-2.5 bg-white hover:bg-gray-50 transition-colors duration-300 rounded-full border border-gray-300 text-sm font-medium text-primary-text"
+              >
+                Sign in
+              </button>
+            )}
+
+            {/* User / Profile - only when signed in */}
+            {(status === "authenticated" || isCustomAuth) && (
             <div className="relative" ref={userRef}>
               <button
                 onClick={handleUserToggle}
-                className="flex items-center gap-1 bg-gray-50  hover:bg-white transition-colors duration-300 rounded-full p-0.5 md:p-1"
+                className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full border bg-gray-100 hover:bg-gray-200 border-gray-300 transition-colors duration-300"
               >
-                {status === "authenticated" || isCustomAuth ? (
-                  // Show user icon for authenticated users
-                  <div className="w-6 h-6 md:w-9 md:h-9  bg-primary-green rounded-full flex items-center justify-center">
-                    <Image
-                      src="/st-images/user/loginuser.png"
-                      alt="User"
-                      width={16}
-                      height={16}
-                      className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0"
-                    />
-                  </div>
-                ) : (
-                  // Show "SIGN IN" text for non-authenticated users
-                  <div className="px-2 md:px-3 py-1 md:py-1.5">
-                    <span className="text-[10px] md:text-sm font-medium text-primary-text whitespace-nowrap">
-                      SIGN IN
-                    </span>
-                  </div>
-                )}
-                {status === "authenticated" || isCustomAuth ? (
-                  <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-gray-700 mr-1 md:mx-2 cursor-pointer" />
-                ) : null}
+                <div className="bg-[#D4FF5A] rounded-full p-1.5 flex items-center justify-center">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary-text" />
+                </div>
+                <ChevronDown className="w-4 h-4 text-gray-600" />
               </button>
 
               {/* User dropdown content */}
@@ -557,11 +505,19 @@ export default function Navbar() {
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+
+            {/* Hamburger - lime-green circle */}
+            <button
+              className="w-11 h-11 rounded-full bg-[#D4FF5A] flex items-center justify-center hover:bg-[#b8e84d] transition-colors"
+              aria-label="Menu"
+            >
+              <Menu className="w-5 h-5 text-primary-text" />
+            </button>
           </div>
         </div>
-        {/* Search Box */}
       </Container>
 
       {/* Auth Modal */}

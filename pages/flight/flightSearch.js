@@ -8,7 +8,7 @@ import Container from "@/components/common/Container";
 import React, { useState, useEffect } from "react";
 import FlightMap from "@/components/FlightMap";
 import { useRouter } from "next/router";
-import Head from "next/head";
+import Seo from "@/components/Seo";
 
 export default function FlightSearch() {
   const router = useRouter();
@@ -114,9 +114,10 @@ export default function FlightSearch() {
   if (pageLoading) {
     return (
       <>
-        <Head>
-          <title>Oggoair - Flight Search</title>
-        </Head>
+        <Seo
+          title="Search Flights"
+          description="Compare and book cheap flights from hundreds of airlines. Find the best flight deals for your destination on OggoAir."
+        />
         <Navbar />
         <LoadingComponent option="flight-search" />
       </>
@@ -125,12 +126,13 @@ export default function FlightSearch() {
 
   return (
     <div className="bg-gray-50">
-      <Head>
-        <title>Oggoair - Flight Search</title>
-      </Head>
+      <Seo
+        title="Search Flights"
+        description="Compare and book cheap flights from hundreds of airlines. Find the best flight deals for your destination on OggoAir."
+      />
       <Navbar />
-      <div className="pt-20">
-        <div className="relative z-[999]">
+      <div className="pt-24">
+        <div className="relative z-[999] ">
           <FlightSearchHeader
             searchParams={router.query}
             onEditClick={handleEditSearch}
@@ -138,41 +140,30 @@ export default function FlightSearch() {
             onCloseEdit={() => setShowesearch(false)}
           />
 
-          <div
-            className={`relative -mt-[50px] lg:-mt-[270px] transition-all duration-300 ease-out ${
-              showesearch
-                ? "opacity-100 translate-y-0 max-h-[1200px] pointer-events-auto overflow-visible"
-                : "opacity-0 translate-y-2 max-h-0 pointer-events-none overflow-hidden"
-            }`}
-          >
-            <SearchSection
-              bg={false}
-              key={showesearch ? "edit-mode" : "hidden"}
-              mainHeader={true}
-              type="flight"
-              mapFrom={mapFrom}
-              mapTo={mapTo}
-              setMapFrom={setMapFrom}
-              setMapTo={setMapTo}
-              isEditMode={showesearch}
-              dropdown={true}
-              onSearchUpdate={handleSearchUpdate}
-            />
-            <div className=" h-[240px] max-w-screen-2xl mx-auto w-11/12 lg:px-3 absolute top-[180px] left-0 right-0 z-0 pointer-events-none">
-              <div className="bg-white border-2 border-gray-200 h-full w-full rounded-2xl"></div>
+          {showesearch && (
+            <div className="mt-[-34px]  ">
+              <SearchSection
+                bg={false}
+                mainHeader={true}
+                isEditMode={true}
+                showServiceTabs={false}
+                type="flight"
+                mapFrom={mapFrom}
+                mapTo={mapTo}
+                setMapFrom={setMapFrom}
+                setMapTo={setMapTo}
+                dropdown={true}
+                onSearchUpdate={handleSearchUpdate}
+              />
             </div>
-          </div>
+          )}
         </div>
 
-        <div
-          className={`min-h-screen pb-8 relative z-99 transition-all duration-300 ease-out ${
-            showesearch ? "pt-0" : "pt-40 "
-          }  `}
-        >
+        <div className={`min-h-screen pb-8 relative z-99 ${showesearch ? "pt-4" : "pt-10"}`}>
           <Container>
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex flex-col lg:flex-row gap-8 ">
               {/* Left sidebar - Filters and Map */}
-              <div className="w-full lg:w-[25%] flex-shrink-0 space-y-6">
+              <div className="w-full lg:w-[25%] flex-shrink-0 space-y-6 ">
                 <FlightMap from={mapFrom} to={mapTo} />
                 <FlightFilters
                   filters={filters}
@@ -182,7 +173,7 @@ export default function FlightSearch() {
               </div>
 
               {/* Main content - Flight results */}
-              <div className="w-full lg:w-[75%] lg:min-w-0">
+              <div className="w-full lg:w-[75%] lg:min-w-0  ">
                 <FlightResults
                   filters={filters}
                   onAirlinesUpdate={handleAirlinesUpdate}

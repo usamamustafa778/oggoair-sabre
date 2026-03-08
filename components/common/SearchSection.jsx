@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   CornerDownRight,
+  Plane,
   PlaneTakeoff,
   ChevronDown,
   ArrowUpDown,
@@ -10,6 +11,8 @@ import {
   Users,
   Plus,
   Bus,
+  Car,
+  Train,
   X,
   ArrowRight,
 } from "lucide-react";
@@ -37,6 +40,9 @@ export default function SearchSection({
   setMapFrom,
   setMapTo,
   type: propType,
+  mainHeader,
+  isEditMode,
+  showServiceTabs,
 }) {
   const router = useRouter();
   const { type: queryType } = router.query; // Get travel type from URL query
@@ -1767,7 +1773,7 @@ export default function SearchSection({
   const renderFlightSearch = () => {
     // Calculate dynamic height for multi-city
     const getMultiCityHeight = () => {
-      if (searchData.tripType !== "multi-city") return "lg:h-[500px]";
+      if (searchData.tripType !== "multi-city") return "lg:h-[350px]";
 
       const baseHeight = 500;
       const segmentHeight = 80;
@@ -1784,26 +1790,73 @@ export default function SearchSection({
       return "lg:h-[980px]";
     };
 
+    const handleTabChange = (tabType) => {
+      if (tabType === "hotel") router.push("/hotelSearch");
+      else if (tabType === "eurobus") router.push("/bus/busSearch");
+      else if (tabType === "flight") router.push("/");
+    };
+
+    const serviceTabs = [
+      { id: "flight", label: "Flights", icon: Plane },
+      { id: "hotel", label: "Hotels", icon: Building2 },
+      { id: "car", label: "Cars", icon: Car },
+      { id: "eurobus", label: "Buses", icon: Bus },
+      { id: "train", label: "Trains", icon: Train },
+    ];
+
+    const shouldShowServiceTabs =
+      (showServiceTabs ?? true) && !isEditMode;
+
     return (
-      <div
-        style={{
-          backgroundImage: bg
-            ? "url('/img/flight-search-bg.png')"
-            : "bg-gray-50",
-        }}
-        className={`min-h-[480px] lg:max-h-[470px] bg-cover bg-center ${getMultiCityHeight()}`}
-      >
-        <Container className="relative h-full">
-          <div className="relative lg:absolute w-full z-[500] lg:top-45 lg:left-1/2 lg:transform lg:-translate-x-1/2  mt-10 md:mt-24 lg:px-3 ">
+      <div className={`min-h-0 bg-white ${getMultiCityHeight()}`}>
+        <Container
+          className={`relative h-full  ${
+            isEditMode ? "pt-4 md:pt-5 lg:pt-5 !max-h-fit border-2 border-gray-200 !max-w-[1295px] mx-auto !px-0 " : "pt-10 md:pt-12 lg:pt-20 pb-4 md:pb-6 lg:pb-6 "
+          }  `}
+        >
+          <div className="w-full  ">
+            {/* Service Tabs - centered, spacing above and below */}
+            {shouldShowServiceTabs && (
+              <div className="flex flex-wrap justify-start gap-4 lg:gap-3 mb-3 mt-6 overflow-visible scroll-mt-28">
+                {serviceTabs.map((tab) => {
+                  const isActive =
+                    (tab.id === "flight" && (!type || type === "flight")) ||
+                    type === tab.id;
+                  const Icon = tab.icon;
+                  const iconColor = isActive ? "#132968" : "#7688BE";
+                  const isDisabledTab = tab.id !== "flight";
+
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={
+                        isDisabledTab ? undefined : () => handleTabChange(tab.id)
+                      }
+                      type="button"
+                      className={`flex items-center  justify-start gap-1 px-6 py-1.5 transition-all flex-shrink-0 overflow-visible whitespace-nowrap bg-white ${
+                        isActive
+                          ? "shadow-md font-semibold text-[#132968]"
+                          : "shadow-sm text-[#7688BE] hover:bg-gray-50"
+                      } ${isDisabledTab ? "cursor-default" : "cursor-pointer"}`}
+                    >
+                      <span className="inline-flex flex-shrink-0">
+                        <Icon size={22} strokeWidth={2.5} color={iconColor} />
+                      </span>
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Floating search card - centered, max-w-6xl */}
             <div
-              className={`  p-4 lg:p-4.5 w-full py-5 ${
-                dropdown
-                  ? "border-none"
-                  : "border-[6px] backdrop-blur-xs bg-gray-100/40 border-white rounded-2xl  shadow-lg"
+              className={`p-5 lg:p-6 w-full mx-auto rounded-2xl shadow-lg bg-white border border-gray-100 ${
+                dropdown ? "border-none" : ""
               }`}
             >
               {/* Trip Type Radio Buttons */}
-              <div className="flex gap-3.5 mb-4">
+              <div className="flex gap-6 mb-5">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
@@ -1811,9 +1864,9 @@ export default function SearchSection({
                     value="one-way"
                     checked={searchData.tripType === "one-way"}
                     onChange={(e) => handleTripTypeChange(e.target.value)}
-                    className="w-4 lg:w-5 h-4 lg:h-5 text-primary-green accent-primary-text"
+                    className="w-4 lg:w-5 h-4 lg:h-5 accent-[#132968]"
                   />
-                  <span className="text-sm lg:text-base lg:tracking-[0.13rem] font-medium text-primary-text">
+                  <span className="text-sm lg:text-base font-medium" style={{ color: "#132968" }}>
                     One-Way
                   </span>
                 </label>
@@ -1826,7 +1879,7 @@ export default function SearchSection({
                     onChange={(e) => handleTripTypeChange(e.target.value)}
                     className="w-4 lg:w-5 h-4 lg:h-5 text-primary-green accent-primary-text "
                   />
-                  <span className="text-sm lg:text-base lg:tracking-[0.13rem] font-medium text-primary-text">
+                  <span className="text-sm lg:text-base font-medium" style={{ color: "#132968" }}>
                     Return
                   </span>
                 </label>
@@ -1839,7 +1892,7 @@ export default function SearchSection({
                     onChange={(e) => handleTripTypeChange(e.target.value)}
                     className="w-4 lg:w-5 h-4 lg:h-5 text-primary-green accent-primary-text "
                   />
-                  <span className="text-sm lg:text-base lg:tracking-[0.13rem] font-medium text-primary-text">
+                  <span className="text-sm lg:text-base font-medium" style={{ color: "#132968" }}>
                     Multi-City
                   </span>
                 </label>
@@ -1847,7 +1900,7 @@ export default function SearchSection({
 
               {/* Multi-city segments */}
               {searchData.tripType === "multi-city" ? (
-                <div className=" space-y-6 lg:space-y-2 w-full">
+                <div className="space-y-6 lg:space-y-2 w-full bg-gray-50/80 rounded-2xl p-3 lg:p-4">
                   {multiCitySegments.map((segment, index) => (
                     <div
                       key={segment.id}
@@ -1862,7 +1915,7 @@ export default function SearchSection({
                         <div className="flex flex-col lg:w-[43%] lg:flex-row space-y-2 lg:space-y-0 items-stretch lg:items-end">
                           {/* From input */}
                           <div className="flex-1  relative lg:mr-1.5">
-                            <div className="relative min-h-[60px] rounded-sm lg:rounded-l-xl pt-6 pb-2 px-4 bg-white">
+                            <div className="relative min-h-[60px] rounded-lg pt-6 pb-2 px-4 bg-gray-100">
                               {multiCityFromSearching[segment.id] && (
                                 <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 animate-spin" />
                               )}
@@ -1886,7 +1939,7 @@ export default function SearchSection({
                                   }));
                                 }}
                                 placeholder="City, Airport"
-                                className="w-full bg-white text-primary-text placeholder:font-medium placeholder:text-gray-400 font-[500] text-lg focus:border-transparent outline-none "
+                                className="w-full bg-transparent text-primary-text placeholder:font-medium placeholder:text-[#132968] font-[500] text-lg focus:border-transparent outline-none"
                               />
                             </div>
 
@@ -1993,7 +2046,7 @@ export default function SearchSection({
 
                           {/* To input */}
                           <div className="flex-1 relative  w-full lg:mr-1.5">
-                            <div className="relative min-h-[60px] rounded-sm lg:rounded-r-xl pt-6 pb-2 px-4 bg-white">
+                            <div className="relative min-h-[60px] rounded-lg pt-6 pb-2 px-4 bg-gray-100">
                               {multiCityToSearching[segment.id] && (
                                 <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 animate-spin" />
                               )}
@@ -2017,7 +2070,7 @@ export default function SearchSection({
                                   }));
                                 }}
                                 placeholder="City, Airport"
-                                className="w-full bg-white text-primary-text placeholder:font-medium placeholder:text-gray-400 font-[500] text-lg focus:border-transparent outline-none"
+                                className="w-full bg-transparent text-primary-text placeholder:font-medium placeholder:text-[#132968] font-[500] text-lg focus:border-transparent outline-none"
                               />
                             </div>
 
@@ -2137,7 +2190,7 @@ export default function SearchSection({
                               label="Departure"
                               minDate={new Date().toISOString().split("T")[0]}
                               placeholder="Select departure date"
-                              className="lg:rounded-l-xl lg:rounded-r-none lg:border-r lg:border-gray-300 w-full"
+                              className="lg:rounded-l-xl lg:rounded-r-none lg:border-r lg:border-gray-300 w-full bg-gray-100"
                             />
                           </div>
 
@@ -2153,7 +2206,7 @@ export default function SearchSection({
                                   [segment.id]: !prev[segment.id],
                                 }))
                               }
-                              className="w-full flex items-center justify-between px-4 h-[60px] bg-white rounded-xl lg:rounded-l-none text-primary-text  text-lg font-[500]"
+                              className="w-full flex items-center justify-between px-4 h-[60px] bg-gray-100 rounded-xl lg:rounded-l-none text-primary-text text-lg font-[500]"
                             >
                               <span className="text-left">
                                 {(segment.adults || 1) +
@@ -2410,16 +2463,16 @@ export default function SearchSection({
                 </div>
               ) : (
                 /* From and To inputs with swap */
-                <div className="flex flex-col lg:flex-row gap-4 flex-1">
+                <div className="flex flex-col lg:flex-row gap-4 lg:gap-0 flex-1 lg:items-stretch">
                   {/* From and To inputs container */}
-                  <div className="relative flex flex-col lg:flex-row lg:gap-3 flex-1">
+                  <div className="relative flex flex-col lg:flex-row lg:gap-3 flex-1 lg:border-0 lg:border-gray-200 lg:pr-4">
                     {/* From input */}
                     <div className="flex-1 relative" ref={fromDropdownRef}>
-                      <div className="relative min-h-[60px] rounded-xl pt-6 pb-2 px-4 bg-white border border-gray-200">
+                      <div className="relative h-[60px] min-h-[60px] rounded-xl pt-6 pb-2 px-4 bg-gray-100 flex items-center">
                         {isSearchingFrom && (
                           <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 animate-spin" />
                         )}
-                        <label className="block absolute top-2 left-4 text-xs font-medium text-gray-500">
+                        <label className="block absolute top-2 left-4 text-xs font-medium" style={{ color: "#6b7280" }}>
                           From
                         </label>
                         <input
@@ -2435,7 +2488,7 @@ export default function SearchSection({
                           }}
                           onKeyDown={handleFromKeyDown}
                           placeholder="City, Airport"
-                          className={`w-full bg-white text-primary-text placeholder:font-medium placeholder:text-gray-400 font-[500] text-lg focus:border-transparent outline-none ${
+                          className={`w-full bg-transparent text-[#132968] placeholder:font-medium placeholder:text-[#132968] font-[500] text-lg focus:border-transparent outline-none ${
                             isSearchingFrom
                               ? "border-primary-green bg-green-50"
                               : ""
@@ -2530,26 +2583,28 @@ export default function SearchSection({
                     </div>
 
                     {/* Swap button */}
-                    <div className="flex justify-center lg:absolute lg:top-1/2 lg:right-1/2 lg:z-20 lg:translate-x-1/2 lg:transform lg:-translate-y-1/2 lg:items-center">
+                    <div className="flex justify-center lg:absolute lg:top-1/2 lg:left-1/2 lg:z-20 lg:-translate-x-[70%] lg:-translate-y-1/2 lg:items-center">
                       <button
                         onClick={handleSwap}
-                        className="p-1.5 rounded-full border border-gray-300 bg-white transition-colors"
+                        type="button"
+                        className="rounded-full border border-gray-200 bg-gray-100 hover:bg-gray-200 transition-colors flex items-center justify-center"
+                        style={{ width: 30, height: 30 }}
                       >
                         {searchData.tripType === "return" ? (
-                          <ArrowUpDown className="w-4 h-4 lg:rotate-90 text-primary-text" />
+                          <ArrowUpDown className="w-3.5 h-3.5 lg:rotate-90" style={{ color: "#132968" }} strokeWidth={2.3} />
                         ) : (
-                          <ArrowRight className="w-4 h-4 text-primary-text" />
+                          <ArrowRight className="w-3.5 h-3.5" style={{ color: "#132968" }} strokeWidth={2.3} />
                         )}
                       </button>
                     </div>
 
                     {/* Destinations input */}
                     <div className="flex-1 relative" ref={toDropdownRef}>
-                      <div className="relative min-h-[60px] rounded-xl pt-6 pb-2 px-4 bg-white border border-gray-200">
+                      <div className="relative h-[60px] min-h-[60px] rounded-xl pt-6 pb-2 px-4 bg-gray-100 flex items-center">
                         {isSearchingTo && (
                           <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 animate-spin" />
                         )}
-                        <label className="block absolute top-2 left-4 text-xs font-medium text-gray-500">
+                        <label className="block absolute top-2 left-4 text-xs font-medium" style={{ color: "#6b7280" }}>
                           To
                         </label>
                         <input
@@ -2563,7 +2618,7 @@ export default function SearchSection({
                           }}
                           onKeyDown={handleToKeyDown}
                           placeholder="City, Airport"
-                          className={`w-full bg-white text-primary-text placeholder:font-medium placeholder:text-gray-400 font-[500] text-lg focus:border-transparent outline-none ${
+                          className={`w-full bg-transparent text-[#132968] placeholder:font-medium placeholder:text-[#132968] font-[500] text-lg focus:border-transparent outline-none ${
                             isSearchingTo
                               ? "border-primary-green bg-green-50"
                               : ""
@@ -2659,7 +2714,7 @@ export default function SearchSection({
                   </div>
 
                   {/* Date inputs and passenger selector */}
-                  <div className="flex flex-col lg:flex-row items-center gap-2 md:gap-0 border border-gray-200 rounded-xl">
+                  <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-0 overflow-visible divide-y lg:divide-y-0 lg:divide-x divide-gray-200">
                     {/* Departure date */}
                     <div className="flex-1 w-full lg:w-auto">
                       <EnhancedDatePicker
@@ -2670,10 +2725,10 @@ export default function SearchSection({
                             departureDate: value,
                           }));
                         }}
-                        label="Departure Date"
+                        label="Departure"
                         minDate={new Date().toISOString().split("T")[0]}
                         placeholder="Select departure date"
-                        className="rounded-l-xl lg:rounded-r-none"
+                        className="rounded-l-xl bg-gray-100"
                         departureDate={searchData.departureDate}
                         returnDate={searchData.returnDate}
                       />
@@ -2688,16 +2743,17 @@ export default function SearchSection({
                             setSearchData((prev) => ({
                               ...prev,
                               returnDate: value,
-                              showReturn: value ? true : false, // Auto-set showReturn when return date entered
+                              showReturn: value ? true : false,
                             }));
                           }}
-                          label="Return Date"
+                          label="Return"
+                          usePrimaryColor
                           minDate={
                             searchData.departureDate ||
                             new Date().toISOString().split("T")[0]
                           }
-                          placeholder="Return Date"
-                          className="border-l border-gray-200"
+                          placeholder="+ Add return"
+                          className="bg-gray-100"
                           departureDate={searchData.departureDate}
                           returnDate={searchData.returnDate}
                         />
@@ -2706,25 +2762,32 @@ export default function SearchSection({
 
                     {/* Passenger and class selector */}
                     <div
-                      className="relative min-h-[60px] w-full lg:w-auto"
+                      className="relative z-10 flex-shrink-0 min-h-[60px] w-full lg:w-auto"
                       ref={dropdownRef}
                     >
                       <button
                         onClick={() =>
                           setShowPassengerDropdown(!showPassengerDropdown)
                         }
-                        className="w-full flex items-center justify-between px-4 h-[60px] bg-white rounded-xl lg:rounded-r-xl lg:rounded-l-none lg:border-l lg:border-gray-300 text-primary-text min-w-[200px] text-lg font-[500]"
+                        className="relative z-10 w-full flex items-center justify-between gap-2 pt-6 pb-2 px-4 h-[60px] min-h-[60px] bg-gray-100 rounded-b-xl lg:rounded-r-xl lg:rounded-l-none min-w-[200px] text-base font-[500] text-left pointer-events-auto"
+                        style={{ color: "#132968" }}
                       >
-                        <span className="text-left">
-                          {searchData.adults +
-                            searchData.students +
-                            searchData.children +
-                            searchData.babies +
-                            searchData.seniors}
-                          . {searchData.classType}
+                        <span className="flex items-center gap-2 flex-1 min-w-0">
+                          <Users className="w-5 h-5 flex-shrink-0" style={{ color: "#132968" }} strokeWidth={2} />
+                          <span>
+                            {searchData.adults +
+                              searchData.students +
+                              searchData.children +
+                              searchData.babies +
+                              searchData.seniors}
+                            . {searchData.classType} class
+                          </span>
                         </span>
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                        <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
                       </button>
+                      <label className="block absolute top-2 left-4 text-xs font-medium pointer-events-none" style={{ color: "#6b7280" }}>
+                        Passenger, class
+                      </label>
 
                       {/* Passenger dropdown */}
                       {showPassengerDropdown && (
@@ -2938,10 +3001,11 @@ export default function SearchSection({
                   </div>
 
                   {/* Search button */}
-                  <div className="flex items-end w-full lg:w-auto">
+                  <div className="flex items-end w-full lg:w-auto lg:pl-4">
                     <button
                       onClick={handleSearch}
-                      className="bg-primary-green text-lg cursor-pointer text-primary-text font-semibold px-8 h-[60px] rounded-xl hover:bg-secondary-green transition-colors whitespace-nowrap flex items-center justify-center gap-2 w-full lg:w-auto"
+                      className="bg-[#D4FF5A] text-lg cursor-pointer font-semibold px-10 rounded-xl hover:bg-[#b8e84d] transition-colors whitespace-nowrap flex items-center justify-center gap-2 w-full lg:w-auto shadow-sm min-w-[140px]"
+                      style={{ color: "#132968", height: 60 }}
                     >
                       Search
                     </button>

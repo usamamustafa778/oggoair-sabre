@@ -111,7 +111,7 @@ export default function Promotion() {
   }, []);
 
   return (
-    <div className="max-w-screen-2xl mx-auto px-2 pb-8 pt-16 w-11/12">
+    <div className="max-w-screen-2xl mx-auto px-2 pb-6 pt-4 md:pt-6 w-11/12">
       <div className="relative overflow-hidden border border-gray-300 rounded-3xl">
         <div className="relative">
           {/* Slider Content */}
@@ -186,21 +186,6 @@ export default function Promotion() {
               />
             </svg>
           </button> */}
-        </div>
-
-        {/* Slide Indicators */}
-        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex w-full px-12 space-x-2">
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToSlide(index)}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                index === currentSlide
-                  ? "w-8 bg-slate-600"
-                  : "w-4 bg-slate-300 hover:bg-slate-400"
-              }`}
-            />
-          ))}
         </div>
       </div>
     </div>
