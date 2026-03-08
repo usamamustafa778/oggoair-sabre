@@ -1,0 +1,231 @@
+@import "tailwindcss";
+
+:root {
+  --primary-green: #D4FF5A;
+  --primary-bg: #FFFFFF;
+  --secondary-green: #EEFFBD;
+  --primary-gray: #FCFBFC;
+  --primary-text: #132968;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary-green: var(--primary-green);
+  --color-secondary-green: var(--secondary-green);
+  --color-primary-bg: var(--primary-bg);
+  --color-primary-text: var(--primary-text);
+  --color-primary-gray: var(--primary-gray);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-regista-demo: regista-demo;
+  --font-regista-regular: regista-regular;
+}
+
+
+
+@font-face {
+  font-family: 'regista-demo';
+  src: url('/fonts/demoregista-pv7ed.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'regista-regular';
+  src: url('/fonts/Regista-Regular-BF674d219903bd4.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Poppins', Arial, Helvetica, sans-serif;
+}
+
+@font-face {
+  font-family: 'noyhgeometric';
+  src: url('/fonts/Fontspring-DEMO-noyhgeometric-regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.sidebar-grid-left-col {
+  grid-template-columns: 1.5fr 3.5fr;
+}
+
+/* Custom font classes for Tailwind v4 */
+.font-regista-demo {
+  font-family: 'regista-demo', 'Poppins', Arial, Helvetica, sans-serif !important;
+}
+
+.font-regista-regular {
+  font-family: 'regista-regular', 'Poppins', Arial, Helvetica, sans-serif !important;
+}
+
+.font-noyhgeometric {
+  font-family: 'noyhgeometric', 'Poppins', Arial, Helvetica, sans-serif !important;
+}
+
+/* Custom dashed border with 6px dash length - bottom only */
+.border-dashed-4 {
+  border-bottom: 2px dashed #d1d5db;
+  border-image: repeating-linear-gradient(to right,
+      #d1d5db 0,
+      #d1d5db 6px,
+      transparent 6px,
+      transparent 12px) 1;
+  border-image-slice: 0 0 1 0;
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar { 
+  display: none;  /* Safari and Chrome */
+}
+
+/* Modern and Futuristic Loading Animations */
+@keyframes futuristicSpin {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.8;
+  }
+  25% {
+    transform: rotate(90deg) scale(1.05);
+    opacity: 1;
+  }
+  50% {
+    transform: rotate(180deg) scale(1);
+    opacity: 0.8;
+  }
+  75% {
+    transform: rotate(270deg) scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(19, 41, 104, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(19, 41, 104, 0.6);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes orbitRing {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes morphingLoader {
+  0%, 100% {
+    border-radius: 50%;
+    transform: rotate(0deg);
+  }
+  25% {
+    border-radius: 20%;
+    transform: rotate(90deg);
+  }
+  50% {
+    border-radius: 10%;
+    transform: rotate(180deg);
+  }
+  75% {
+    border-radius: 30%;
+    transform: rotate(270deg);
+  }
+}
+
+@keyframes quantumDot {
+  0%, 100% {
+    transform: scale(0.8) rotate(0deg);
+    opacity: 0.5;
+  }
+  33% {
+    transform: scale(1.2) rotate(120deg);
+    opacity: 1;
+  }
+  66% {
+    transform: scale(0.9) rotate(240deg);
+    opacity: 0.7;
+  }
+}
+
+@keyframes neuralPulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dataStream {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+/* Loading Animation Classes */
+.futuristic-spinner {
+  animation: futuristicSpin 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.orbit-ring {
+  animation: orbitRing 3s linear infinite;
+}
+
+.morphing-loader {
+  animation: morphingLoader 3s ease-in-out infinite;
+}
+
+.quantum-dot {
+  animation: quantumDot 1.5s ease-in-out infinite;
+}
+
+.neural-pulse {
+  animation: neuralPulse 1.8s ease-in-out infinite;
+}
+
+.data-stream {
+  animation: dataStream 2s ease-in-out infinite;
+}
