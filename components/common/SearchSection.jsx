@@ -1811,7 +1811,7 @@ export default function SearchSection({
       <div className={`min-h-0 bg-white ${getMultiCityHeight()}`}>
         <Container
           className={`relative h-full  ${
-            isEditMode ? "pt-4 md:pt-5 lg:pt-5 !max-h-fit border-2 border-gray-200 !max-w-[1295px] mx-auto !px-0 " : "pt-10 md:pt-12 lg:pt-20 pb-4 md:pb-6 lg:pb-6 "
+            isEditMode ? "pt-4 md:pt-5 lg:pt-5 !max-h-fit border-2 border-gray-200 !max-w-[1240px] mx-auto !px-0 " : "pt-10 md:pt-12 lg:pt-20 pb-4 md:pb-6 lg:pb-6 "
           }  `}
         >
           <div className="w-full  ">
