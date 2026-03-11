@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
 import Image from "next/image";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { useRouter } from "next/router";
+import { Plane } from "lucide-react";
+import { deriveBookingStatus, derivePaymentStatus } from "../../utils/bookingStatus";
 
 function Archived({ bookings = [], loading = false, error = null }) {
-  const [expandedBooking, setExpandedBooking] = useState(null);
-  const [expandedPassengers, setExpandedPassengers] = useState({});
+  const router = useRouter();
   // Format date helper
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -166,6 +167,97 @@ function Archived({ bookings = [], loading = false, error = null }) {
     return "/st-images/booking/card1.png";
   };
 
+  // Get detailed flight segment info (for card layout)
+  const getFlightSegments = (booking) => {
+    if (booking.flightData?.slices && booking.flightData.slices.length > 0) {
+      const firstSlice = booking.flightData.slices[0];
+      const segments = firstSlice.segments || [];
+      if (segments.length > 0) {
+        return { slice: firstSlice, segments };
+      }
+    }
+    if (booking.segments && booking.segments.length > 0) {
+      return { slice: { duration: booking.duration }, segments: booking.segments };
+    }
+    if (booking.flightDetails?.segments && booking.flightDetails.segments.length > 0) {
+      return {
+        slice: { duration: booking.flightDetails.duration },
+        segments: booking.flightDetails.segments,
+      };
+    }
+    return { slice: null, segments: [] };
+  };
+
+  const formatDuration = (durationStr) => {
+    if (!durationStr || durationStr === "N/A") return "N/A";
+
+    if (durationStr.startsWith("PT")) {
+      const hours = parseInt(durationStr.match(/(\d+)H/)?.[1] || "0", 10);
+      const minutes = parseInt(durationStr.match(/(\d+)M/)?.[1] || "0", 10);
+      const h = hours.toString().padStart(2, "0");
+      const m = minutes.toString().padStart(2, "0");
+      return `${h}h ${m}min`;
+    }
+
+    const hourMatch = durationStr.match(/(\d+)h/i);
+    const minuteMatch = durationStr.match(/(\d+)min/i);
+    if (hourMatch || minuteMatch) {
+      const hours = parseInt(hourMatch?.[1] || "0", 10);
+      const minutes = parseInt(minuteMatch?.[1] || "0", 10);
+      const h = hours.toString().padStart(2, "0");
+      const m = minutes.toString().padStart(2, "0");
+      return `${h}h ${m}min`;
+    }
+
+    return durationStr;
+  };
+
+  const getStopInfo = (segments) => {
+    if (!segments || segments.length <= 1) {
+      return "Direct";
+    }
+    const numberOfStops = segments.length - 1;
+    return `${numberOfStops} stop${numberOfStops > 1 ? "s" : ""}`;
+  };
+
+  const getBaggageInfo = (booking) => {
+    const { segments } = getFlightSegments(booking);
+    const firstSegment = segments?.[0];
+    const passenger = firstSegment?.passengers?.[0];
+    if (!passenger?.baggages) {
+      return { checkedCount: 0, carryOnCount: 0, personalCount: 0 };
+    }
+
+    let checkedCount = 0;
+    let carryOnCount = 0;
+    let personalCount = 0;
+
+    passenger.baggages.forEach((bag) => {
+      if (bag.type === "checked") checkedCount = bag.quantity;
+      else if (bag.type === "carry_on") carryOnCount = bag.quantity;
+      else if (bag.type === "personal") personalCount = bag.quantity;
+    });
+
+    return { checkedCount, carryOnCount, personalCount };
+  };
+
+  const getPrice = (booking) => {
+    const flightData = booking.flightData || booking.flightDetails || {};
+    const amount =
+      flightData.total_amount ||
+      booking.amount ||
+      booking.payment?.totalAmount ||
+      booking.payment?.amount ||
+      0;
+    if (!amount) return null;
+    const value = Number(amount);
+    if (!isFinite(value) || value <= 0) return null;
+    return `€${value.toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })}`;
+  };
+
   if (loading) {
     return (
       <div className="w-full flex flex-col gap-6">
@@ -252,40 +344,11 @@ function Archived({ bookings = [], loading = false, error = null }) {
     );
   }
 
-  const toggleBooking = (bookingId) => {
-    setExpandedBooking(expandedBooking === bookingId ? null : bookingId);
-  };
-
-  const togglePassengers = (bookingId) => {
-    setExpandedPassengers((prev) => ({
-      ...prev,
-      [bookingId]: !prev[bookingId],
-    }));
-  };
-
   // Get booking details for display
   const getBookingDetails = (booking) => {
-    const details = {
+    return {
       bookingReference: booking.bookingReference || booking.id || "N/A",
-      status: booking.bookingStatus || booking.status || "N/A",
-      email: booking.email || "N/A",
-      phone:
-        booking.fullPhone ||
-        (booking.phone
-          ? `${booking.phone.dialingCode} ${booking.phone.number}`
-          : "N/A"),
-      passengers: booking.passengers || [],
-      createdAt: booking.createdAt || booking.summary?.createdAt || "N/A",
-      totalAmount:
-        booking.flightData?.total_amount ||
-        booking.flightData?.intended_total_amount ||
-        "N/A",
-      currency:
-        booking.flightData?.total_currency ||
-        booking.flightData?.base_currency ||
-        "USD",
     };
-    return details;
   };
 
   return (
@@ -298,8 +361,22 @@ function Archived({ bookings = [], loading = false, error = null }) {
         const bookingImage = getBookingImage(booking);
         const bookingId =
           booking.id || booking._id || booking.bookingId || index;
-        const isExpanded = expandedBooking === bookingId;
         const details = getBookingDetails(booking);
+        const { slice, segments } = getFlightSegments(booking);
+        const firstSegment = segments?.[0] || {};
+        const lastSegment = segments?.[segments.length - 1] || {};
+        const airlineName =
+          firstSegment.marketing_carrier?.name ||
+          booking.flightData?.owner?.name ||
+          "Unknown Airline";
+        const airlineLogo =
+          firstSegment.marketing_carrier?.logo_symbol_url ||
+          booking.flightData?.owner?.logo_symbol_url ||
+          "/st-images/flightSearch/a.png";
+        const stopInfo = getStopInfo(segments);
+        const durationText = formatDuration(slice?.duration || booking.duration);
+        const baggageInfo = getBaggageInfo(booking);
+        const priceText = getPrice(booking);
 
         return (
           <ArchivedCard
@@ -315,9 +392,16 @@ function Archived({ bookings = [], loading = false, error = null }) {
               time: formatTime(bookingTime),
               img: bookingImage,
             }}
-            isExpanded={isExpanded}
-            onToggle={() => toggleBooking(bookingId)}
+            rawBooking={booking}
             details={details}
+            airline={{
+              name: airlineName,
+              logo: airlineLogo,
+              stopInfo,
+              durationText,
+            }}
+            baggageInfo={baggageInfo}
+            priceText={priceText}
             formatDate={formatDate}
             passengersExpanded={expandedPassengers[bookingId]}
             onTogglePassengers={() => togglePassengers(bookingId)}
@@ -332,85 +416,88 @@ export default Archived;
 
 const ArchivedCard = ({
   booking,
-  isExpanded,
-  onToggle,
+  rawBooking,
   details,
-  formatDate,
-  passengersExpanded,
-  onTogglePassengers,
+  airline,
+  baggageInfo,
+  priceText,
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all">
-      <div className="flex flex-col md:flex-row gap-4 md:gap-6 p-6">
-        {/* Image */}
-        <div className="w-full md:w-48 lg:w-56 h-40 md:h-auto flex-shrink-0">
-          <Image
-            src={booking.img}
-            alt="Journey"
-            width={300}
-            height={200}
-            className="w-full h-full object-cover rounded-lg"
-          />
-        </div>
+    <div
+      onClick={() => {
+        if (details.bookingReference && typeof window !== "undefined") {
+          window.location.href = `/dashboard/bookings/${details.bookingReference}`;
+        }
+      }}
+      className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden hover:border-primary-green/30 transition-all cursor-pointer"
+    >
+      <div className="flex flex-col md:flex-row">
+        {/* Main flight info */}
+        <div className="flex-1 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold text-primary-text px-3 py-1.5 rounded-full bg-primary-green/10 border border-primary-green/20">
+              {booking.type}
+            </span>
+          </div>
 
-        {/* Content */}
-        <div className="flex-1 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold text-primary-text px-3 py-1.5 rounded-full bg-primary-green/10 border border-primary-green/20">
-                {booking.type}
-              </span>
-              <button
-                onClick={onToggle}
-                className="p-2 bg-primary-green text-primary-text rounded-full hover:bg-primary-green/90 transition-all shadow-sm hover:shadow-md"
-              >
-                {isExpanded ? (
-                  <ChevronDown className="w-4 h-4" />
-                ) : (
-                  <ChevronRight className="w-4 h-4" />
-                )}
-              </button>
+          <div className="flex items-center gap-6">
+            {/* Airline Logo */}
+            <div className="flex-shrink-0">
+              <Image
+                src={airline.logo}
+                alt={airline.name}
+                width={48}
+                height={48}
+                className="w-12 h-12 object-contain"
+              />
             </div>
 
-            {/* Route Info */}
-            <div className="flex items-start gap-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex-shrink-0">
-                <Image
-                  src="/st-images/booking/location.png"
-                  alt="Location"
-                  width={24}
-                  height={24}
-                  className="w-6 h-6 object-contain"
-                />
+            {/* Departure */}
+            <div className="flex-shrink-0">
+              <div className="text-2xl font-bold text-primary-text mb-1">
+                {booking.time}
               </div>
-              <div className="flex-1">
-                <div className="mb-2">
-                  <p className="font-bold text-base text-gray-900">
-                    {booking.origin}
-                  </p>
-                  {booking.originStation && (
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      {booking.originStation}
-                    </p>
-                  )}
+              <div className="text-sm text-gray-600">
+                {booking.originStation} {booking.origin}
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div className="flex-1 flex flex-col items-center px-4">
+              <div className="text-sm text-gray-600 mb-2">
+                {airline.durationText}
+              </div>
+              <div className="w-full relative flex items-center">
+                <div className="h-0.5 border-t-2 border-dotted border-primary-text w-full"></div>
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center">
+                  <Plane
+                    size={16}
+                    className="text-primary-text rotate-45 ml-1"
+                  />
                 </div>
-                <div className="w-px h-4 bg-gray-300 mx-2 my-1"></div>
-                <div>
-                  <p className="font-bold text-base text-gray-900">
-                    {booking.destination}
-                  </p>
-                  {booking.destinationStation && (
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      {booking.destinationStation}
-                    </p>
-                  )}
-                </div>
+                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary-text rounded-full"></div>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-primary-text rounded-full"></div>
+              </div>
+              <div className="text-sm text-gray-600 mt-2">
+                {airline.stopInfo}
+              </div>
+            </div>
+
+            {/* Arrival */}
+            <div className="flex-shrink-0 text-right">
+              <div className="text-2xl font-bold text-primary-text mb-1">
+                {booking.time && booking.time !== "N/A"
+                  ? booking.time
+                  : ""}
+              </div>
+              <div className="text-sm text-gray-600">
+                {booking.destinationStation} {booking.destination}
               </div>
             </div>
           </div>
 
-          {/* Date & Time */}
-          <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+          {/* Date + baggage row */}
+          <div className="flex items-center justify-between gap-4 pt-4 mt-4 border-t border-gray-200">
             <div className="flex items-center gap-2">
               <Image
                 src="/st-images/booking/calendar.png"
@@ -423,139 +510,47 @@ const ArchivedCard = ({
                 {booking.date}
               </span>
             </div>
-            {booking.time && booking.time !== "N/A" && (
-              <div className="flex items-center gap-2">
-                <Image
-                  src="/st-images/booking/time.png"
-                  alt="Time"
-                  width={20}
-                  height={20}
-                  className="w-5 h-5 object-contain"
-                />
-                <span className="text-sm font-semibold text-gray-700">
-                  {booking.time}
-                </span>
-              </div>
-            )}
+
+            {/* Baggage summary moved from right column */}
+            <div className="flex items-center gap-3">
+              {[
+                {
+                  count: baggageInfo.personalCount || 0,
+                  label: "Personal",
+                  icon: "/st-images/bags/personal-bag.png",
+                },
+                {
+                  count: baggageInfo.carryOnCount || 0,
+                  label: "Cabin",
+                  icon: "/st-images/bags/cabin-baggage.png",
+                },
+                {
+                  count: baggageInfo.checkedCount || 0,
+                  label: "Checked",
+                  icon: "/st-images/bags/cabin-baggage-checked.png",
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center gap-1 text-primary-text"
+                >
+                  <Image
+                    src={item.icon}
+                    alt={`${item.label} baggage`}
+                    width={20}
+                    height={20}
+                    className="w-5 h-5 object-contain"
+                  />
+                  <span className="text-xs font-semibold text-gray-700">
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Expandable Details Section */}
-      {isExpanded && (
-        <div className="border-t border-gray-200 pt-6 px-6 pb-6 bg-gray-50">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Booking Information */}
-            <div className="space-y-4">
-              <h4 className="font-bold text-lg text-gray-900 mb-4">
-                Booking Information
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">
-                    Booking Reference
-                  </p>
-                  <p className="text-base text-gray-900">
-                    {details.bookingReference}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">Status</p>
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                      details.status === "confirmed"
-                        ? "bg-green-100 text-green-800"
-                        : details.status === "pending"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {details.status.toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">
-                    Total Amount
-                  </p>
-                  <p className="text-base text-gray-900 font-semibold">
-                    {details.currency} {details.totalAmount}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">
-                    Booking Date
-                  </p>
-                  <p className="text-base text-gray-900">
-                    {formatDate(details.createdAt)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="space-y-4">
-              <h4 className="font-bold text-lg text-gray-900 mb-4">
-                Contact Information
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">Email</p>
-                  <p className="text-base text-gray-900">{details.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">Phone</p>
-                  <p className="text-base text-gray-900">{details.phone}</p>
-                </div>
-                {details.passengers.length > 0 && (
-                  <div>
-                    <button
-                      onClick={onTogglePassengers}
-                      className="w-full flex items-center justify-between text-sm font-semibold text-gray-600 mb-2 hover:text-gray-900 transition-colors"
-                    >
-                      <span>Passengers ({details.passengers.length})</span>
-                      {passengersExpanded ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                    </button>
-                    {passengersExpanded && (
-                      <div className="space-y-2 mt-2">
-                        {details.passengers.map((passenger, idx) => (
-                          <div
-                            key={idx}
-                            className="bg-white p-3 rounded-lg border border-gray-200"
-                          >
-                            <p className="text-sm text-gray-900 font-medium">
-                              {passenger.title} {passenger.firstName}{" "}
-                              {passenger.lastName}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {passenger.passengerType || "Adult"}
-                            </p>
-                            {passenger.dateOfBirth && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                DOB: {passenger.dateOfBirth.day}/
-                                {passenger.dateOfBirth.month}/
-                                {passenger.dateOfBirth.year}
-                              </p>
-                            )}
-                            {passenger.passportNumber && (
-                              <p className="text-xs text-gray-500">
-                                Passport: {passenger.passportNumber}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+

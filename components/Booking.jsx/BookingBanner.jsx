@@ -18,13 +18,11 @@ function BookingBanner({
         return "Your bookings";
       case "payment-methods":
         return "Payment methods";
-      case "notifications":
-        return "Notifications";
       case "refer-friend":
         return "Refer a Friend";
       default:
         return "Your bookings";
-    }
+      }
   };
 
   const showTabs = activeTab === "bookings";
@@ -68,12 +66,11 @@ function BookingBanner({
             {activeTab === "passenger-details" && "Manage your personal information and account settings"}
             {activeTab === "bookings" && "View and manage all your travel bookings in one place"}
             {activeTab === "payment-methods" && "Securely manage your payment methods and billing information"}
-            {activeTab === "notifications" && "Stay updated with your booking notifications and travel alerts"}
             {activeTab === "refer-friend" && "Invite friends and earn rewards for every successful referral"}
           </p>
           
           {/* Sub-tabs for bookings */}
-          {showTabs && (
+          {/* {showTabs && (
             <div className="flex flex-row gap-3 bg-white/95 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl p-1.5 border border-white/40 justify-center mx-auto w-fit">
               <Link href="/dashboard/bookings?tab=upcoming">
                 <button
@@ -98,7 +95,7 @@ function BookingBanner({
                 </button>
               </Link>
             </div>
-          )}
+          )} */}
         </div>
       </Container>
       

@@ -4,17 +4,37 @@ import UpComing from "../../components/Booking.jsx/UpComing";
 import Archived from "../../components/Booking.jsx/Archived";
 import Rightbar from "../../components/Booking.jsx/layout";
 import { useRouter } from "next/router";
+import Image from "next/image";
+import { Check } from "lucide-react";
 import { tokenUtils } from "../../config/api";
+import { deriveBookingStatus } from "../../utils/bookingStatus";
+import Seo from "@/components/Seo";
 
 export default function BookingsPage() {
   const router = useRouter();
-  const { tab } = router.query;
+  const { tab, status: statusFilter, page: pageQuery } = router.query;
   const [bookingSubTab, setBookingSubTab] = useState("upcoming");
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 0,
+  });
+  const [activeStatusFilter, setActiveStatusFilter] = useState("");
 
-  // Fetch bookings from API
+  // Sync status filter from URL when page loads or query changes
+  useEffect(() => {
+    if (statusFilter && ["confirmed", "pending", "cancelled"].includes(statusFilter)) {
+      setActiveStatusFilter(statusFilter);
+    } else if (!statusFilter) {
+      setActiveStatusFilter("");
+    }
+  }, [statusFilter]);
+
+  // Fetch bookings from API with pagination and filtering
   useEffect(() => {
     const fetchBookings = async () => {
       try {
@@ -28,13 +48,27 @@ export default function BookingsPage() {
           return;
         }
 
-        const response = await fetch("/api/bookings/my-bookings", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        // Build query parameters
+        const params = new URLSearchParams();
+        const currentPage = pageQuery ? parseInt(pageQuery) : 1;
+        params.append("page", currentPage);
+        params.append("limit", "10");
+
+        // Add status filter if active
+        if (activeStatusFilter) {
+          params.append("status", activeStatusFilter);
+        }
+
+        const response = await fetch(
+          `/api/bookings/my-bookings?${params.toString()}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         const data = await response.json();
 
@@ -49,7 +83,17 @@ export default function BookingsPage() {
           data.data?.bookings ||
           data.bookings ||
           [];
+        const paginationData =
+          data.data?.data?.pagination ||
+          data.data?.pagination ||
+          data.pagination;
+
         setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+
+        // Update pagination if available
+        if (paginationData) {
+          setPagination(paginationData);
+        }
       } catch (err) {
         console.error("Error fetching bookings:", err);
         setError(err.message || "Failed to load bookings");
@@ -60,7 +104,7 @@ export default function BookingsPage() {
     };
 
     fetchBookings();
-  }, []);
+  }, [pageQuery, activeStatusFilter]);
 
   // Update sub-tab when query changes
   useEffect(() => {
@@ -76,7 +120,39 @@ export default function BookingsPage() {
 
   const handleSubTabChange = (newTab) => {
     setBookingSubTab(newTab);
+    // Reset status filter and page when changing tabs
+    setActiveStatusFilter("");
     router.push(`/dashboard/bookings?tab=${newTab}`, undefined, {
+      shallow: true,
+    });
+  };
+
+  const handleStatusFilter = (status) => {
+    setActiveStatusFilter(status);
+    // Update URL to reflect the filter and reset to page 1
+    const params = new URLSearchParams();
+    params.append("tab", bookingSubTab);
+    if (status === "confirmed") {
+      params.append("status", "confirmed");
+    } else if (status === "pending") {
+      params.append("status", "pending");
+    } else if (status === "cancelled") {
+      params.append("status", status);
+    }
+    params.append("page", "1");
+    router.push(`/dashboard/bookings?${params.toString()}`, undefined, {
+      shallow: true,
+    });
+  };
+
+  const handlePageChange = (newPage) => {
+    const params = new URLSearchParams();
+    params.append("tab", bookingSubTab);
+    if (activeStatusFilter) {
+      params.append("status", activeStatusFilter);
+    }
+    params.append("page", newPage);
+    router.push(`/dashboard/bookings?${params.toString()}`, undefined, {
       shallow: true,
     });
   };
@@ -90,6 +166,7 @@ export default function BookingsPage() {
     const archived = [];
 
     bookings.forEach((booking) => {
+      const derivedStatus = deriveBookingStatus(booking);
       // Determine the booking date from flightData structure
       let bookingDate = null;
 
@@ -124,11 +201,10 @@ export default function BookingsPage() {
         }
       } else {
         // If no date found, check status or default to archived
-        if (
-          booking.bookingStatus === "confirmed" ||
-          booking.bookingStatus === "pending"
-        ) {
+        if (derivedStatus === "confirmed" || derivedStatus === "pending") {
           upcoming.push(booking);
+        } else if (derivedStatus === "cancelled") {
+          archived.push(booking);
         } else {
           archived.push(booking);
         }
@@ -145,12 +221,123 @@ export default function BookingsPage() {
       bookingSubTab={bookingSubTab}
       setBookingSubTab={handleSubTabChange}
     >
+      <Seo title="My Bookings" noindex />
       <Rightbar>
-        {bookingSubTab === "upcoming" ? (
-          <UpComing bookings={upcoming} loading={loading} error={error} />
-        ) : (
-          <Archived bookings={archived} loading={loading} error={error} />
-        )}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6">
+          {/* Left column: filters + booking list */}
+          <div className="space-y-6">
+            {/* Status Filter Buttons */}
+            <div className="mb-6 bg-white rounded-xl shadow-md p-4 border border-gray-100">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Filter by Status
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleStatusFilter("")}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      activeStatusFilter === ""
+                        ? "bg-primary-green text-primary-text shadow-md"
+                        : "bg-gray-200 text-gray-800 hover:bg-gray-300 border border-gray-300"
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => handleStatusFilter("confirmed")}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      activeStatusFilter === "confirmed"
+                        ? "bg-primary-green text-primary-text shadow-md"
+                        : "bg-gray-200 text-gray-800 hover:bg-gray-300 border border-gray-300"
+                    }`}
+                  >
+                    Confirmed
+                  </button>
+                  <button
+                    onClick={() => handleStatusFilter("pending")}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      activeStatusFilter === "pending"
+                        ? "bg-orange-500 text-primary-text shadow-md"
+                        : "bg-gray-200 text-gray-800 hover:bg-gray-300 border border-gray-300"
+                    }`}
+                  >
+                    Pending
+                  </button>
+                  <button
+                    onClick={() => handleStatusFilter("cancelled")}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      activeStatusFilter === "cancelled"
+                        ? "bg-red-500 text-primary-text shadow-md"
+                        : "bg-gray-200 text-gray-800 hover:bg-gray-300 border border-gray-300"
+                    }`}
+                  >
+                    Cancelled
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {bookingSubTab === "upcoming" ? (
+              <UpComing
+                bookings={upcoming}
+                loading={loading}
+                error={error}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+              />
+            ) : (
+              <Archived
+                bookings={archived}
+                loading={loading}
+                error={error}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+              />
+            )}
+          </div>
+
+          {/* Right column: QR panel (sticky on desktop) */}
+          <div className="space-y-6 lg:sticky lg:top-24 self-start">
+            <div className="bg-white border border-gray-200 shadow-xl relative rounded-xl overflow-hidden h-fit">
+              <div className="p-5">
+                <div className="flex flex-col items-center gap-4">
+                  <Image
+                    src="/st-images/booking/qr.png"
+                    alt="QR Code"
+                    width={96}
+                    height={96}
+                    className="w-24 h-24 object-contain"
+                  />
+                  <div className="text-center space-y-3">
+                    <h3 className="text-sm font-bold text-gray-900">
+                      Scan to discover more features and savings in our app
+                    </h3>
+                    <div className="space-y-2.5 text-left">
+                      <div className="flex items-center gap-2.5">
+                        <Check className="w-4 h-4 text-primary-green flex-shrink-0" />
+                        <span className="text-xs text-gray-700 font-medium">
+                          Special in-app offers
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <Check className="w-4 h-4 text-primary-green flex-shrink-0" />
+                        <span className="text-xs text-gray-700 font-medium">
+                          Tickets available offline
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <Check className="w-4 h-4 text-primary-green flex-shrink-0" />
+                        <span className="text-xs text-gray-700 font-medium">
+                          Live trip updates
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </Rightbar>
     </DashboardLayout>
   );

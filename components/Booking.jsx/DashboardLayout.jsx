@@ -5,6 +5,8 @@ import BookingBanner from "./BookingBanner";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Container from "../common/Container";
+import Image from "next/image";
+import { Check } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -76,26 +78,6 @@ export default function DashboardLayout({
       ),
     },
     {
-      id: "notifications",
-      label: "Notifications",
-      href: "/dashboard/notifications",
-      icon: (
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 17h5l-5 5v-5zM4.19 4.19A4 4 0 004 6v6a4 4 0 004 4h6a4 4 0 004-4V6a4 4 0 00-4-4H6a4 4 0 00-2.81 1.19z"
-          />
-        </svg>
-      ),
-    },
-    {
       id: "refer-friend",
       label: "Refer a Friend",
       href: "/dashboard/refer-friend",
@@ -122,7 +104,6 @@ export default function DashboardLayout({
     if (currentPath.includes("passenger-details")) return "passenger-details";
     if (currentPath.includes("bookings")) return "bookings";
     if (currentPath.includes("payment-methods")) return "payment-methods";
-    if (currentPath.includes("notifications")) return "notifications";
     if (currentPath.includes("refer-friend")) return "refer-friend";
     return "passenger-details"; // default
   };
@@ -138,45 +119,48 @@ export default function DashboardLayout({
         setBookingSubTab={setBookingSubTab}
       />
       <Container className="flex flex-col xl:flex-row bg-primary-bg min-h-screen">
-        {/* Sidebar */}
-        <div className="w-full lg:w-72 lg:min-w-[288px] bg-white shadow-2xl -mt-20 z-20  relative rounded-xl overflow-hidden border border-gray-100 h-fit">
-          <div className="p-5 pt-7 pb-6">
-            <nav className="space-y-2">
-              {menuItems.map((item, index) => {
-                const isActive = item.id === activeTab;
-                return (
-                  <Link key={item.id} href={item.href}>
-                    <div
-                      className={`group flex items-center px-5 py-4 text-sm font-semibold transition-all duration-300 w-full text-left cursor-pointer rounded-xl relative ${
-                        isActive
-                          ? "text-primary-text bg-gradient-to-r from-primary-green/15 to-primary-green/5 border-l-4 border-primary-green shadow-md transform translate-x-1"
-                          : "text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-transparent hover:text-primary-text border-l-4 border-transparent hover:border-gray-200 hover:shadow-sm"
-                      }`}
-                    >
-                      {/* Active indicator bar */}
-                      {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-green rounded-r-full shadow-lg"></div>
-                      )}
-                      <span
-                        className={`mr-4 transition-all duration-300 flex-shrink-0 ${
+        {/* Left column: sidebar (sticky) */}
+        <div className="w-full lg:w-72 lg:min-w-[288px] mt-10 z-20 space-y-6 lg:sticky lg:top-24 self-start">
+          {/* Sidebar navigation card */}
+          <div className="bg-white border border-gray-200 shadow-xl relative rounded-xl overflow-hidden h-fit">
+            <div className="p-5 pt-7 pb-6">
+              <nav className="space-y-2">
+                {menuItems.map((item, index) => {
+                  const isActive = item.id === activeTab;
+                  return (
+                    <Link key={item.id} href={item.href}>
+                      <div
+                        className={`group flex items-center px-5 py-4 text-sm font-semibold transition-all duration-300 w-full text-left cursor-pointer rounded-xl relative ${
                           isActive
-                            ? "text-primary-text scale-110"
-                            : "text-gray-500 group-hover:text-primary-text group-hover:scale-110"
+                            ? "text-primary-text bg-gradient-to-r from-primary-green/15 to-primary-green/5 border-l-4 border-primary-green shadow-md transform translate-x-1"
+                            : "text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-transparent hover:text-primary-text border-l-4 border-transparent hover:border-gray-200 hover:shadow-sm"
                         }`}
                       >
-                        {item.icon}
-                      </span>
-                      <span className="flex-1 whitespace-nowrap tracking-wide">
-                        {item.label}
-                      </span>
-                      {isActive && (
-                        <div className="w-2.5 h-2.5 bg-primary-green rounded-full ml-3 flex-shrink-0 animate-pulse shadow-lg"></div>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </nav>
+                        {/* Active indicator bar */}
+                        {isActive && (
+                          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-green rounded-r-full shadow-lg"></div>
+                        )}
+                        <span
+                          className={`mr-4 transition-all duration-300 flex-shrink-0 ${
+                            isActive
+                              ? "text-primary-text scale-110"
+                              : "text-gray-500 group-hover:text-primary-text group-hover:scale-110"
+                          }`}
+                        >
+                          {item.icon}
+                        </span>
+                        <span className="flex-1 whitespace-nowrap tracking-wide">
+                          {item.label}
+                        </span>
+                        {isActive && (
+                          <div className="w-2.5 h-2.5 bg-primary-green rounded-full ml-3 flex-shrink-0 animate-pulse shadow-lg"></div>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
           </div>
         </div>
 
@@ -188,3 +172,4 @@ export default function DashboardLayout({
     </>
   );
 }
+
