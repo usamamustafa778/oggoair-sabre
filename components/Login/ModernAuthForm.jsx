@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { tokenUtils } from "@/config/api";
+import authService from "@/services/authService";
 import {
   Mail,
   ArrowLeft,
@@ -15,7 +16,8 @@ import {
 
 const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
   // Main flow states
-  const [currentStep, setCurrentStep] = useState("options"); // options, email, name, otp
+  const [currentStep, setCurrentStep] = useState("options"); // options, email, password, otp, setPassword, name
+  const [authMode, setAuthMode] = useState("signin"); // signin | forgot
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -26,9 +28,14 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
   const [lastName, setLastName] = useState("");
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [showOtp, setShowOtp] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // User flow tracking
   const [isExistingUser, setIsExistingUser] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
+  const [otpFlow, setOtpFlow] = useState(null); // "newUser" | "legacySetPassword" | "forgotPassword"
   const [userData, setUserData] = useState(null);
 
   // Reset form when modal closes
@@ -39,45 +46,30 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
 
   const resetForm = () => {
     setCurrentStep("options");
+    setAuthMode("signin");
     setEmail("");
     setFirstName("");
     setLastName("");
     setOtp(["", "", "", ""]);
+    setPassword("");
+    setConfirmPassword("");
     setError("");
     setSuccess("");
     setIsExistingUser(false);
+    setHasPassword(false);
+    setOtpFlow(null);
     setUserData(null);
     setShowOtp(false);
     localStorage.removeItem("otpData");
   };
 
-  // Check if OTP has expired
-  const isOTPExpired = () => {
-    const otpData = localStorage.getItem("otpData");
-    if (!otpData) return true;
-
-    try {
-      const parsed = JSON.parse(otpData);
-      const expiresIn = parsed.expiresIn;
-      const timestamp = parsed.timestamp;
-
-      // Parse expiresIn (e.g., "10 minutes")
-      const minutes = parseInt(expiresIn.split(" ")[0]);
-      const expirationTime = timestamp + minutes * 60 * 1000;
-
-      return Date.now() > expirationTime;
-    } catch (error) {
-      console.error("Error parsing OTP data:", error);
-      return true;
-    }
-  };
-
   // Handle OTP input change
   const handleOTPChange = (index, value) => {
-    if (value.length > 1) return; // Only allow single digit
+    const digit = value.replace(/\D/g, "");
+    if (digit.length > 1) return; // Only allow single digit
 
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = digit;
     setOtp(newOtp);
 
     // Auto-focus next input
@@ -89,10 +81,31 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
 
   // Handle OTP input key events
   const handleOTPKeyDown = (index, e) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      // Move to previous input on backspace
-      const prevInput = document.getElementById(`otp-${index - 1}`);
-      if (prevInput) prevInput.focus();
+    if (e.key === "Backspace") {
+      e.preventDefault();
+
+      if (otp[index]) {
+        // Clear current digit first
+        const newOtp = [...otp];
+        newOtp[index] = "";
+        setOtp(newOtp);
+      } else if (index > 0) {
+        // Move to previous input when current is already empty
+        const prevInput = document.getElementById(`otp-${index - 1}`);
+        if (prevInput) prevInput.focus();
+      }
+      return;
+    }
+
+    // Prevent non-digit character input
+    if (
+      e.key.length === 1 &&
+      !/[0-9]/.test(e.key) &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey
+    ) {
+      e.preventDefault();
     }
   };
 
@@ -117,28 +130,25 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
     if (nextInput) nextInput.focus();
   };
 
-  // Handle Google authentication
+  // Google auth: reuse existing NextAuth flow for Sabre
   const handleGoogleAuth = async () => {
     setIsLoading(true);
     setError("");
-
     try {
       await signIn("google", { callbackUrl: "/" });
-    } catch (error) {
-      console.error("Google auth error:", error);
-      setError("Google authentication failed. Please try again.");
+    } catch (err) {
+      console.error("Google auth error:", err);
+      setError("Google Sign-In failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle Apple authentication
+  // Apple authentication placeholder
   const handleAppleAuth = async () => {
     setIsLoading(true);
     setError("");
-
     try {
-      // Apple OAuth implementation would go here
       setError("Apple authentication is not yet available.");
     } catch (error) {
       console.error("Apple auth error:", error);
@@ -150,11 +160,13 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
 
   // Handle email authentication flow
   const handleEmailAuth = () => {
+    setAuthMode("signin");
     setCurrentStep("email");
     setError("");
+    setSuccess("");
   };
 
-  // Handle email submission
+  // Handle email submission (decide existing/new + password/OTP flow)
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim()) {
@@ -164,58 +176,172 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
 
     setIsLoading(true);
     setError("");
+    setSuccess("");
 
     try {
-      // Call register API directly
+      // 1) Check email to determine flow
+      const checkResult = await authService.checkEmail(email.trim());
+
+      if (!checkResult.success) {
+        setError(checkResult.error || "Failed to check email. Please try again.");
+        return;
+      }
+
+      const exists =
+        typeof checkResult.exists === "boolean"
+          ? checkResult.exists
+          : !!checkResult?.data?.exists ||
+            !!checkResult?.data?.accountExists;
+
+      // Backend may provide hasPassword; if missing but account exists,
+      // assume password-based account and let login API correct us.
+      const backendHasPassword =
+        checkResult?.data?.hasPassword !== undefined
+          ? checkResult.data.hasPassword
+          : exists;
+
+      setIsExistingUser(exists);
+      setHasPassword(backendHasPassword);
+
+      // SIGN-IN FLOW
+      if (authMode === "signin") {
+        if (!exists) {
+          // New user: collect name first, then send OTP using register API
+          setOtpFlow("newUser");
+          setCurrentStep("name");
+          setSuccess(
+            "Please enter your first and last name to continue with verification."
+          );
+        } else if (exists && backendHasPassword) {
+          // Existing user with password: go to password login
+          setCurrentStep("password");
+        } else {
+          // Legacy user without password: OTP login then force set password
+          const otpResult = await authService.sendOTP(email.trim());
+
+          if (!otpResult.success) {
+            setError(otpResult.error || "Failed to send verification code.");
+            return;
+          }
+
+          setOtp(["", "", "", ""]);
+          setOtpFlow("legacySetPassword");
+          setCurrentStep("otp");
+          setSuccess(
+            otpResult.message ||
+              "OTP sent to your email. Verify to set your password."
+          );
+        }
+      } else {
+        // FORGOT PASSWORD FLOW
+        if (!exists || !backendHasPassword) {
+          setError(
+            "We couldn't find an existing account with a password for this email."
+          );
+          return;
+        }
+
+        const otpResult = await authService.sendOTP(email.trim());
+
+        if (!otpResult.success) {
+          setError(otpResult.error || "Failed to send verification code.");
+          return;
+        }
+
+        setOtp(["", "", "", ""]);
+        setOtpFlow("forgotPassword");
+        setCurrentStep("otp");
+        setSuccess(
+          otpResult.message ||
+            "OTP sent to your email. Verify to reset your password."
+        );
+      }
+    } catch (error) {
+      console.error("Email submission error:", error);
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle password login for existing users with password
+  const handlePasswordLoginSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!password.trim()) {
+      setError("Please enter your password");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API}/api/users/register`,
+        `${process.env.NEXT_PUBLIC_API}/api/users/login`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ email: email.trim() }),
+          body: JSON.stringify({
+            email: email.trim(),
+            password: password.trim(),
+          }),
         }
       );
 
       const data = await response.json();
 
-      if (response.ok && data.status === "success") {
-        localStorage.setItem(
-          "otpData",
-          JSON.stringify({
-            userData: data.data.user,
-            isLogin: data.data.isLogin,
-            expiresIn: data.data.expiresIn,
-            timestamp: Date.now(),
-          })
-        );
+      if (response.ok && data.status === "success" && data.data) {
+        tokenUtils.setAuthData({
+          user: data.data.user,
+          token: data.data.token,
+          refreshToken: data.data.refreshToken,
+        });
 
-        if (data.data.isLogin) {
-          // Existing user - go directly to OTP
-          setIsExistingUser(true);
+        setSuccess("Login successful!");
+
+        setTimeout(() => {
+          handleClose();
+          if (onAuthSuccess) {
+            onAuthSuccess();
+          }
+        }, 800);
+      } else if (
+        data?.message &&
+        data.message
+          .toLowerCase()
+          .includes("does not have a password set")
+      ) {
+        // Legacy user discovered at login time: fall back to OTP + force set password
+        try {
+          const otpResult = await authService.sendOTP(email.trim());
+
+          if (!otpResult.success) {
+            setError(
+              otpResult.error || "Failed to send verification code. Please try OTP login."
+            );
+            return;
+          }
+
+          setOtp(["", "", "", ""]);
+          setOtpFlow("legacySetPassword");
           setCurrentStep("otp");
-          setSuccess(data.message || "OTP sent to your email address");
-        } else {
-          setCurrentStep("name");
           setSuccess(
-            "Please enter your first and last name to complete registration."
+            otpResult.message ||
+              "This account uses OTP login. Enter the code we sent to your email."
           );
+        } catch (otpError) {
+          console.error("Fallback OTP login error:", otpError);
+          setError("Failed to switch to OTP login. Please try again.");
         }
       } else {
-        if (
-          data.message === "First name and last name are required for new users"
-        ) {
-          setCurrentStep("name");
-          setSuccess(
-            "Please enter your first and last name to complete registration."
-          );
-        } else {
-          setError(data.message || "Failed to register email");
-        }
+        setError(data.message || "Invalid email or password.");
       }
     } catch (error) {
-      console.error("Email submission error:", error);
+      console.error("Password login error:", error);
       setError("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
@@ -238,7 +364,7 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
     setError("");
 
     try {
-      // Call register API with firstName and lastName
+      // Call existing register API with firstName and lastName (sends OTP)
       const response = await fetch(
         `${
           process.env.NEXT_PUBLIC_API || "http://localhost:5000"
@@ -276,6 +402,8 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
           lastName: lastName.trim(),
           email,
         });
+        setOtp(["", "", "", ""]);
+        setOtpFlow("newUser");
         setCurrentStep("otp");
         setSuccess(data.message || "OTP sent to your email address");
       } else {
@@ -300,54 +428,177 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
 
     setIsLoading(true);
     setError("");
+    setSuccess("");
 
     try {
-      // Call verify OTP API
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API}/api/users/signup/verify-otp`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            otp: otpString,
-          }),
-        }
-      );
+      // All OTP verification uses existing /api/users/signup/verify-otp API
+      const result = await authService.verifyOTP(email.trim(), otpString);
 
-      const data = await response.json();
+      if (!result.success) {
+        setError(result.error || "Invalid code. Please try again.");
+        return;
+      }
 
-      if (response.ok && data.status === "success") {
-        // Store authentication data using the new structure
-        if (data.data) {
-          // Store complete authentication data
-          tokenUtils.setAuthData({
-            user: data.data.user,
-            token: data.data.token,
-            refreshToken: data.data.refreshToken,
-          });
-        }
+      if (result.token || result.user) {
+        tokenUtils.setAuthData({
+          user: result.user,
+          token: result.token,
+          refreshToken: result.refreshToken,
+        });
+      }
 
-        localStorage.removeItem("otpData");
-
+      if (
+        otpFlow === "newUser" ||
+        otpFlow === "legacySetPassword" ||
+        otpFlow === "forgotPassword"
+      ) {
         setSuccess(
-          isExistingUser ? "Login successful!" : "Registration successful!"
+          otpFlow === "forgotPassword"
+            ? "Code verified. Set a new password to continue."
+            : "Code verified. Set a password to continue."
         );
-
-        // Close modal and trigger success callback
+        setCurrentStep("setPassword");
+      } else {
+        // Simple OTP login without password setting
+        setSuccess("Login successful!");
         setTimeout(() => {
           handleClose();
           if (onAuthSuccess) {
             onAuthSuccess();
           }
-        }, 1000);
-      } else {
-        setError(data.message || "Invalid OTP. Please try again.");
+        }, 800);
       }
     } catch (error) {
       console.error("OTP verification error:", error);
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle setting or resetting password after OTP flows
+  const handleSetPasswordSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!password.trim() || !confirmPassword.trim()) {
+      setError("Please enter and confirm your password");
+      return;
+    }
+
+    if (password.trim().length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+
+    if (password.trim() !== confirmPassword.trim()) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    const token = tokenUtils.getToken();
+
+    if (!token) {
+      setError("Authentication error. Please restart the login process.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      let endpoint = "";
+      let body = {};
+
+      if (otpFlow === "forgotPassword") {
+        // User already has a password; update it via change-password
+        endpoint = `${process.env.NEXT_PUBLIC_API}/api/users/change-password`;
+        body = {
+          newPassword: password.trim(),
+        };
+      } else {
+        // New users or legacy users without password: set-password
+        endpoint = `${process.env.NEXT_PUBLIC_API}/api/users/set-password`;
+        body = {
+          password: password.trim(),
+        };
+      }
+
+      const response = await fetch(endpoint, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      // If set-password says "Password already set", gracefully fall back to change-password
+      if (
+        !response.ok &&
+        data?.message &&
+        data.message
+          .toLowerCase()
+          .includes("password already set")
+      ) {
+        const fallbackResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API}/api/users/change-password`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              newPassword: password.trim(),
+            }),
+          }
+        );
+
+        const fallbackData = await fallbackResponse.json();
+
+        if (fallbackResponse.ok && fallbackData.status === "success") {
+          setSuccess("Password updated. You're now logged in.");
+
+          setTimeout(() => {
+            handleClose();
+            if (onAuthSuccess) {
+              onAuthSuccess();
+            }
+          }, 800);
+          return;
+        }
+
+        setError(
+          fallbackData.message ||
+            "Failed to update password. Please try again or restart the flow."
+        );
+        return;
+      }
+
+      if (response.ok && data.status === "success") {
+        setSuccess(
+          otpFlow === "forgotPassword"
+            ? "Password updated. You're now logged in."
+            : "Password set successfully. You're now logged in."
+        );
+
+        setTimeout(() => {
+          handleClose();
+          if (onAuthSuccess) {
+            onAuthSuccess();
+          }
+        }, 800);
+      } else {
+        setError(
+          data.message ||
+            "Failed to set password. Please try again or restart the flow."
+        );
+      }
+    } catch (error) {
+      console.error("Set password error:", error);
       setError("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
@@ -363,8 +614,25 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
       case "name":
         setCurrentStep("email");
         break;
+      case "password":
+        setCurrentStep("email");
+        setPassword("");
+        break;
       case "otp":
-        setCurrentStep(isExistingUser ? "email" : "name");
+        if (otpFlow === "newUser") {
+          setCurrentStep("email");
+        } else if (otpFlow === "legacySetPassword" || otpFlow === "forgotPassword") {
+          setCurrentStep("email");
+        } else {
+          setCurrentStep(isExistingUser ? "email" : "name");
+        }
+        break;
+      case "setPassword":
+        if (otpFlow) {
+          setCurrentStep("otp");
+        } else {
+          setCurrentStep("email");
+        }
         break;
       default:
         setCurrentStep("options");
@@ -383,23 +651,6 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
     }
   }, [currentStep]);
 
-  // Check for existing OTP data on component mount
-  useEffect(() => {
-    const otpData = localStorage.getItem("otpData");
-    if (otpData && !isOTPExpired()) {
-      try {
-        const parsed = JSON.parse(otpData);
-        setEmail(parsed.email);
-        setIsExistingUser(parsed.isLogin);
-        setCurrentStep("otp");
-        setSuccess("Please enter the OTP sent to your email");
-      } catch (error) {
-        console.error("Error parsing stored OTP data:", error);
-        localStorage.removeItem("otpData");
-      }
-    }
-  }, []);
-
   // Handle body scroll when modal is open
   useEffect(() => {
     document.body.classList.add("overflow-hidden", "h-screen");
@@ -410,69 +661,68 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
     switch (currentStep) {
       case "options":
         return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                Welcome to OggoTrip
-              </h2>
-              <p className="text-gray-600">
-                Choose your preferred sign-in method
-              </p>
-            </div>
-
+          <div className="flex flex-col gap-6">
             <div className="space-y-3">
-              {/* Google Auth */}
-              <button
-                onClick={handleGoogleAuth}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center cursor-pointer gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Image
-                    src="/st-images/google.png"
-                    alt="Google"
-                    width={20}
-                    height={20}
-                    className="w-5 h-5"
-                  />
-                )}
-                <span className="font-medium text-gray-700">
-                  Continue with Google
-                </span>
-              </button>
-
-              {/* Apple Auth */}
-              <button
-                onClick={handleAppleAuth}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center cursor-pointer gap-3 px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Image
-                    src="/st-images/apple.png"
-                    alt="Apple"
-                    width={20}
-                    height={20}
-                    className="w-5 h-5"
-                  />
-                )}
-                <span className="font-medium">Continue with Apple</span>
-              </button>
-
-              {/* Email Auth */}
+              {/* Email first */}
               <button
                 onClick={handleEmailAuth}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center cursor-pointer gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-between cursor-pointer gap-3 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Mail className="w-5 h-5 text-gray-600" />
-                <span className="font-medium text-gray-700">
-                  Continue with Email
-                </span>
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center">
+                    <Mail className="w-4 h-4 text-gray-600" />
+                  </div>
+                  <span className="font-medium text-gray-800">
+                    Connect with Email
+                  </span>
+                </div>
+              </button>
+
+              {/* Apple */}
+              <button
+                onClick={handleAppleAuth}
+                disabled={isLoading}
+                className="w-full flex items-center justify-between cursor-pointer gap-3 px-4 py-3 bg-black text-white rounded-xl hover:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center gap-3">
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Image
+                      src="/st-images/apple.png"
+                      alt="Apple"
+                      width={20}
+                      height={20}
+                      className="w-5 h-5"
+                    />
+                  )}
+                  <span className="font-medium">Connect with Apple</span>
+                </div>
+              </button>
+
+              {/* Google */}
+              <button
+                onClick={handleGoogleAuth}
+                disabled={isLoading}
+                className="w-full flex items-center justify-between cursor-pointer gap-3 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center gap-3">
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Image
+                      src="/st-images/google.png"
+                      alt="Google"
+                      width={20}
+                      height={20}
+                      className="w-5 h-5"
+                    />
+                  )}
+                  <span className="font-medium text-gray-800">
+                    Connect with Google
+                  </span>
+                </div>
               </button>
             </div>
           </div>
@@ -483,10 +733,12 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                Enter your email
+                {authMode === "forgot" ? "Reset your password" : "Enter your email"}
               </h2>
               <p className="text-gray-600">
-                We'll send you a verification code
+                {authMode === "forgot"
+                  ? "Enter your email to receive a reset code"
+                  : "We'll send you a verification code"}
               </p>
             </div>
 
@@ -517,12 +769,106 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Sending...
+                    {authMode === "forgot" ? "Sending code..." : "Sending..."}
+                  </>
+                ) : (
+                  authMode === "forgot" ? "Send reset code" : "Continue"
+                )}
+              </button>
+            </form>
+          </div>
+        );
+
+      case "password":
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-2">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-1">
+                Sign In
+              </h2>
+            </div>
+
+            <form onSubmit={handlePasswordLoginSubmit} className="space-y-4">
+              {/* Email field (pre-filled from previous step) */}
+              <div>
+                <label
+                  htmlFor="signin-email"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Email
+                </label>
+                <input
+                  id="signin-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-green focus:border-transparent outline-none transition-colors"
+                  required
+                />
+              </div>
+
+              {/* Password field */}
+              <div>
+                <label
+                  htmlFor="signin-password"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="signin-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-green focus:border-transparent outline-none transition-colors"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-[#D4FF5A] text-primary-text cursor-pointer py-3 rounded-lg font-semibold hover:bg-[#c4f24f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Signing in...
                   </>
                 ) : (
                   "Continue"
                 )}
               </button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("forgot");
+                    setCurrentStep("email");
+                    setError("");
+                    setSuccess("");
+                  }}
+                  className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </form>
           </div>
         );
@@ -600,7 +946,9 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                Check your email
+                {authMode === "forgot"
+                  ? "Check your email to reset"
+                  : "Check your email"}
               </h2>
               <p className="text-gray-600">
                 We sent a 4-digit code to{" "}
@@ -665,6 +1013,12 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Verifying...
                   </>
+                ) : otpFlow === "forgotPassword" ? (
+                  "Verify & Continue"
+                ) : otpFlow === "newUser" ? (
+                  "Verify & Continue"
+                ) : otpFlow === "legacySetPassword" ? (
+                  "Verify & Continue"
                 ) : isExistingUser ? (
                   "Sign In"
                 ) : (
@@ -680,7 +1034,7 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
                     setError("");
 
                     try {
-                      // Prepare payload with email and names if available
+                      // Prepare payload with email and names if available (for new users)
                       const payload = { email: email.trim() };
                       if (userData?.firstName && userData?.lastName) {
                         payload.firstName = userData.firstName;
@@ -701,7 +1055,6 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
                       const data = await response.json();
 
                       if (response.ok && data.status === "success") {
-                        // Update OTP data in localStorage
                         localStorage.setItem(
                           "otpData",
                           JSON.stringify({
@@ -734,6 +1087,77 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
           </div>
         );
 
+      case "setPassword":
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                {authMode === "forgot"
+                  ? "Set a new password"
+                  : "Create your password"}
+              </h2>
+              <p className="text-gray-600">
+                {authMode === "forgot"
+                  ? "Choose a strong password you haven't used before."
+                  : "Use this password for future logins with your email."}
+              </p>
+            </div>
+
+            <form onSubmit={handleSetPasswordSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="new-password"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Password
+                </label>
+                <input
+                  id="new-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-green focus:border-transparent outline-none transition-colors"
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="confirm-password"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Confirm password
+                </label>
+                <input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-green focus:border-transparent outline-none transition-colors"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-primary-green text-primary-text cursor-pointer py-3 rounded-lg font-medium hover:bg-primary-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save password"
+                )}
+              </button>
+            </form>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -748,7 +1172,7 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
         className="bg-white shadow-2xl w-full max-w-4xl mx-auto relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button (top-right, like oggo-air) */}
+        {/* Close button */}
         <button
           onClick={handleClose}
           className="absolute top-4 right-4 text-primary-text hover:text-gray-600 transition-colors z-10"
@@ -761,16 +1185,13 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
           <div className="hidden md:flex md:w-1/2 bg-[#F8FBFF] border-r border-gray-100 px-10 py-10">
             <div className="flex flex-col justify-center">
               <div>
-                <img
-                  src="/image.png"
-                  alt="oggoair"
-                  className="w-full h-[250px] object-contain"
-                />
+                <img src="/image.png" alt="oggoair" className="w-full h-[250px]  object-contain" />
               </div>
+
               <h2 className="text-3xl font-semibold text-center text-primary-text mb-3">
                 Unlock the Best of oggotrip
               </h2>
-              <p className="text-sm text-primary-text text-center leading-relaxed mt-4">
+              <p className="text-sm text-primary-text text-centerleading-relaxed mt-4">
                 Sign up for quick, seamless booking, fast refunds, and exclusive
                 discounts via our referral program.
               </p>
@@ -794,7 +1215,7 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
             <div className="mb-6 flex justify-center md:justify-center">
               <Image
                 src="/logo.png"
-                alt="OggoAir"
+                alt="OggoTrip"
                 width={160}
                 height={160}
                 className="h-12 w-auto md:h-20"
@@ -817,7 +1238,7 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
               </div>
             )}
 
-            {/* Dynamic step content (buttons, email form, OTP, etc.) */}
+            {/* Dynamic step content */}
             {renderStepContent()}
           </div>
         </div>
@@ -827,3 +1248,4 @@ const ModernAuthForm = ({ setShowAuthModal, onAuthSuccess }) => {
 };
 
 export default ModernAuthForm;
+

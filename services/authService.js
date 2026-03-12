@@ -1,4 +1,4 @@
-// services/authService.js
+// services/authService.js (Oggo-Air style, reused for Sabre)
 import { BACKEND_API_URL } from "@/config/api";
 
 class AuthService {
@@ -9,21 +9,31 @@ class AuthService {
    */
   async checkEmail(email) {
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/auth/check-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
+      // Backend route is mounted under /api/users
+      const response = await fetch(
+        `${BACKEND_API_URL}/api/users/auth/check-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
 
       const data = await response.json();
 
       if (response.ok) {
+        // Support both { exists } and { accountExists, hasPassword }
+        const exists =
+          typeof data.exists === "boolean"
+            ? data.exists
+            : !!data.accountExists;
+
         return {
           success: true,
-          exists: data.exists || false,
-          data: data,
+          exists,
+          data,
         };
       } else {
         return {
@@ -44,17 +54,21 @@ class AuthService {
 
   /**
    * Send OTP to user's email
-   * @param {string} email - User's email address
-   * @returns {Promise<{success: boolean, message?: string, error?: string}>}
+   * Uses unified /api/users/register endpoint.
+   * For existing users, only email is required.
+   * For new users, firstName/lastName can be passed via extraData.
    */
-  async sendOTP(email) {
+  async sendOTP(email, extraData = {}) {
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/auth/send-otp`, {
+      const response = await fetch(`${BACKEND_API_URL}/api/users/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          ...extraData,
+        }),
       });
 
       const data = await response.json();
@@ -63,6 +77,7 @@ class AuthService {
         return {
           success: true,
           message: data.message || "OTP sent successfully",
+          data,
         };
       } else {
         return {
@@ -80,29 +95,33 @@ class AuthService {
   }
 
   /**
-   * Verify OTP for login
+   * Verify OTP for login / registration
    * @param {string} email - User's email address
    * @param {string} otp - OTP code
-   * @returns {Promise<{success: boolean, token?: string, user?: any, error?: string}>}
    */
   async verifyOTP(email, otp) {
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/auth/verify-otp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, otp }),
-      });
+      const response = await fetch(
+        `${BACKEND_API_URL}/api/users/signup/verify-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, otp }),
+        }
+      );
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.status === "success") {
         return {
           success: true,
-          token: data.token,
-          user: data.user,
+          token: data.data?.token,
+          user: data.data?.user,
+          refreshToken: data.data?.refreshToken,
           message: data.message || "Login successful",
+          data,
         };
       } else {
         return {
@@ -120,42 +139,20 @@ class AuthService {
   }
 
   /**
-   * Register new user with OTP verification
-   * @param {Object} userData - User registration data
-   * @param {string} userData.name - User's full name
-   * @param {string} userData.email - User's email address
-   * @param {string} otp - OTP code
-   * @returns {Promise<{success: boolean, token?: string, user?: any, error?: string}>}
+   * Convenience wrapper kept for compatibility
    */
   async register(userData, otp) {
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: userData.name,
-          email: userData.email,
-          otp: otp,
-        }),
-      });
+      const verification = await this.verifyOTP(userData.email, otp);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        return {
-          success: true,
-          token: data.token,
-          user: data.user,
-          message: data.message || "Registration successful",
-        };
-      } else {
-        return {
-          success: false,
-          error: data.message || "Registration failed",
-        };
+      if (verification.success) {
+        return verification;
       }
+
+      return {
+        success: false,
+        error: verification.error || "Registration failed",
+      };
     } catch (error) {
       console.error("Error registering user:", error);
       return {
@@ -166,34 +163,48 @@ class AuthService {
   }
 
   /**
-   * Google OAuth login
-   * @returns {Promise<{success: boolean, error?: string}>}
+   * Google OAuth login - backend handles token issuance
    */
-  async googleLogin() {
+  async googleLogin(accessToken) {
     try {
-      // This would typically redirect to Google OAuth
-      // For now, we'll return a placeholder response
-      return {
-        success: false,
-        error: "Google OAuth not implemented yet",
-      };
+      const response = await fetch(
+        `${BACKEND_API_URL}/api/users/auth/login/google`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ accessToken }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.status === "success") {
+        return {
+          success: true,
+          data: data.data,
+        };
+      } else {
+        return {
+          success: false,
+          error: data.message || "Google login failed",
+        };
+      }
     } catch (error) {
       console.error("Error with Google login:", error);
       return {
         success: false,
-        error: "Google login failed",
+        error: "Could not sign in with Google. Please try again.",
       };
     }
   }
 
   /**
-   * Apple OAuth login
-   * @returns {Promise<{success: boolean, error?: string}>}
+   * Apple OAuth login placeholder
    */
   async appleLogin() {
     try {
-      // This would typically redirect to Apple OAuth
-      // For now, we'll return a placeholder response
       return {
         success: false,
         error: "Apple OAuth not implemented yet",
@@ -211,3 +222,4 @@ class AuthService {
 // Export a singleton instance
 export const authService = new AuthService();
 export default authService;
+
