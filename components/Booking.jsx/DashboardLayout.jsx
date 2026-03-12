@@ -113,11 +113,13 @@ export default function DashboardLayout({
   return (
     <>
       <Navbar />
-      <BookingBanner
-        activeTab={activeTab}
-        bookingSubTab={bookingSubTab}
-        setBookingSubTab={setBookingSubTab}
-      />
+      {/* Push dashboard content below fixed navbar for better spacing */}
+      <div className="pt-24 md:pt-28 lg:pt-32">
+        <BookingBanner
+          activeTab={activeTab}
+          bookingSubTab={bookingSubTab}
+          setBookingSubTab={setBookingSubTab}
+        />
       <Container className="flex flex-col xl:flex-row bg-primary-bg min-h-screen">
         {/* Left column: sidebar (sticky) */}
         <div className="w-full lg:w-72 lg:min-w-[288px] mt-10 z-20 space-y-6 lg:sticky lg:top-24 self-start">
@@ -169,6 +171,7 @@ export default function DashboardLayout({
           <div className="max-w-7xl mx-auto pl-4 lg:pl-6">{children}</div>
         </div>
       </Container>
+      </div>
     </>
   );
 }

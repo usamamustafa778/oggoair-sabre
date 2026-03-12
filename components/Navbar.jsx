@@ -426,7 +426,7 @@ export default function Navbar() {
 
                   {/* Menu Items */}
                   <div className="py-2">
-                    <Link href="/dashboard/booking">
+                  <Link href="/dashboard/bookings?tab=upcoming">
                       <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer group">
                         <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">
                           <svg
